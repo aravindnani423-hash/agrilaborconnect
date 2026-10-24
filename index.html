@@ -176,8 +176,28 @@
     }
     .phone-single-line {
       white-space: nowrap !important;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      min-width: 0;
+    }
+    .phone-button span {
+      white-space: nowrap !important;
+      display: inline-block;
+    }
+    @media (max-width: 640px) {
+      .communication-actions {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+      }
+      .communication-actions > a {
+        width: 100%;
+        min-width: 0;
+        min-height: 52px;
+        box-sizing: border-box;
+      }
+      .communication-actions .phone-button {
+        font-size: 15px !important;
+      }
     }
   </style>
 </head>
@@ -1184,16 +1204,16 @@
             <p class="text-xs text-slate-500 flex-1 truncate px-1">${item.notes}</p>
           </div>
 
-          <!-- PRIMARY COMMUNICATION ACTIONS -->
-          <div class="flex flex-wrap sm:flex-nowrap gap-2 pt-2 border-t border-slate-100">
-            <a href="tel:${item.phone}" class="phone-single-line flex-1 bg-agri-600 hover:bg-agri-700 text-white font-bold py-2 px-3 rounded-xl text-xs text-center transition flex items-center justify-center gap-1">
-              📞 ${dict.cardCall} (${item.phone})
+          <!-- PRIMARY COMMUNICATION ACTIONS: responsive, no clipped phone number -->
+          <div class="communication-actions grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3 border-t border-slate-100">
+            <a href="tel:${item.phone}" class="phone-button phone-single-line bg-agri-600 hover:bg-agri-700 text-white font-bold py-3 px-4 rounded-xl text-sm text-center transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-phone"></i><span>${item.phone}</span>
             </a>
-            <a href="https://wa.me/91${item.phone}" target="_blank" class="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center transition">
-              <i class="fa-brands fa-whatsapp text-emerald-600 text-sm mr-1"></i> ${dict.cardWhatsapp}
+            <a href="https://wa.me/91${item.phone}" target="_blank" rel="noopener noreferrer" class="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 whitespace-nowrap">
+              <i class="fa-brands fa-whatsapp text-emerald-600"></i> ${dict.cardWhatsapp}
             </a>
-            <a href="${mapsUrl}" target="_blank" class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center transition">
-              <i class="fa-solid fa-directions text-blue-600 mr-1"></i> ${dict.cardOpenMaps}
+            <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 whitespace-nowrap">
+              <i class="fa-solid fa-directions text-blue-600"></i> ${dict.cardOpenMaps}
             </a>
           </div>
 

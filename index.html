@@ -532,6 +532,7 @@
   <script>
     // ========================================================
     // FIREBASE REALTIME DATABASE CONFIGURATION
+    // Replace placeholder values with your Firebase keys:
     // ========================================================
     const firebaseConfig = {
       apiKey: "YOUR_FIREBASE_API_KEY",
@@ -543,11 +544,20 @@
       appId: "YOUR_APP_ID"
     };
 
-    // Initialize Firebase if not already initialized
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+    let db = null;
+    let isFirebaseReady = false;
+
+    try {
+      if (firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY") {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        db = firebase.database();
+        isFirebaseReady = true;
+      }
+    } catch (err) {
+      console.warn("Firebase not configured yet, running in local mode.");
     }
-    const db = firebase.database();
 
     // Application state
     let activeTab = 'available';
@@ -719,21 +729,32 @@
       });
     }
 
-    // Realtime Database Sync Listener
+    // Load Data (Firebase Sync or Fallback)
     function initDatabaseSync() {
-      db.ref('listings').on('value', (snapshot) => {
-        const data = snapshot.val();
-        currentListings = [];
-        if (data) {
-          Object.keys(data).forEach((key) => {
-            currentListings.push({ id: key, ...data[key] });
-          });
-        }
+      if (isFirebaseReady) {
+        db.ref('listings').on('value', (snapshot) => {
+          const data = snapshot.val();
+          currentListings = [];
+          if (data) {
+            Object.keys(data).forEach((key) => {
+              currentListings.push({ id: key, ...data[key] });
+            });
+          }
+          renderData();
+          updateBadges();
+        });
+      } else {
+        const local = localStorage.getItem('agriListings');
+        currentListings = local ? JSON.parse(local) : [];
         renderData();
         updateBadges();
-      }, (error) => {
-        console.error("Firebase sync error:", error);
-      });
+      }
+    }
+
+    function saveLocal() {
+      if (!isFirebaseReady) {
+        localStorage.setItem('agriListings', JSON.stringify(currentListings));
+      }
     }
 
     function updateBadges() {
@@ -880,18 +901,18 @@
     }
 
     function toggleFormFields(type) {
-      // Optional toggle hook if needed
+      // Form field toggle hook
     }
 
     function toggleContinuousVoice() {
-      alert("Voice assistant active.");
+      alert("Voice Assistant activated.");
     }
 
     function skipToNextVoiceField() {
-      // Skip voice field stub
+      // Voice field skip stub
     }
 
-    // Form Submission to Cloud Database
+    // Form Submission Handler
     function handleFormSubmit(event) {
       event.preventDefault();
       const editId = document.getElementById('input-edit-id').value;
@@ -912,14 +933,23 @@
         timestamp: Date.now()
       };
 
-      if (editId) {
-        db.ref('listings/' + editId).update(payload).then(() => {
-          closePostModal();
-        });
+      if (isFirebaseReady) {
+        if (editId) {
+          db.ref('listings/' + editId).update(payload).then(() => closePostModal());
+        } else {
+          db.ref('listings').push(payload).then(() => closePostModal());
+        }
       } else {
-        db.ref('listings').push(payload).then(() => {
-          closePostModal();
-        });
+        if (editId) {
+          const idx = currentListings.findIndex(x => x.id === editId);
+          if (idx !== -1) currentListings[idx] = { id: editId, ...payload };
+        } else {
+          currentListings.push({ id: 'local-' + Date.now(), ...payload });
+        }
+        saveLocal();
+        renderData();
+        updateBadges();
+        closePostModal();
       }
     }
 
@@ -947,8 +977,15 @@
     }
 
     function deleteListing(id) {
-      if (confirm("Mark this post as completed and delete from cloud?")) {
-        db.ref('listings/' + id).remove();
+      if (confirm("Mark this post as completed/delete?")) {
+        if (isFirebaseReady) {
+          db.ref('listings/' + id).remove();
+        } else {
+          currentListings = currentListings.filter(x => x.id !== id);
+          saveLocal();
+          renderData();
+          updateBadges();
+        }
       }
     }
 

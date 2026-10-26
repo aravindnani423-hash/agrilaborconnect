@@ -18,6 +18,10 @@
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+  <!-- FIREBASE CLOUD SDKs (Compatibility Mode for Browser) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
   <script>
     tailwind.config = {
       theme: {
@@ -42,7 +46,6 @@
   </script>
 
   <style>
-
     /* ===== SINGLE-PAGE / NO HORIZONTAL SCROLL FIX ===== */
     html, body {
       width: 100%;
@@ -81,10 +84,6 @@
       min-width: 0;
     }
 
-    .overflow-x-auto {
-      overflow-x: hidden !important;
-    }
-
     #cards-container {
       width: 100%;
       min-width: 0;
@@ -98,55 +97,14 @@
     }
 
     #map {
+      height: 380px;
+      width: 100%;
+      z-index: 10;
+      border-radius: 1rem;
       max-width: 100%;
       min-width: 0;
     }
 
-    /* Keep the desktop header inside the viewport even when text is long. */
-    header .max-w-7xl {
-      min-width: 0;
-    }
-
-    header .max-w-7xl > div {
-      min-width: 0;
-    }
-
-    header .max-w-7xl > div:last-child {
-      min-width: 0;
-      flex-shrink: 1;
-    }
-
-    header h1,
-    header p,
-    header button,
-    header select {
-      min-width: 0;
-    }
-
-    /* On narrower desktop/tablet widths, allow header controls to wrap
-       instead of creating a wider-than-screen page. */
-    @media (max-width: 1100px) {
-      header .max-w-7xl {
-        flex-wrap: wrap;
-        gap: 0.75rem;
-      }
-
-      header .max-w-7xl > div:last-child {
-        margin-left: auto;
-      }
-    }
-
-    @media (max-width: 640px) {
-      header .max-w-7xl {
-        align-items: stretch;
-      }
-
-      header .max-w-7xl > div:last-child {
-        width: 100%;
-        justify-content: flex-end;
-      }
-    }
-    #map { height: 380px; width: 100%; z-index: 10; border-radius: 1rem; }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #16a34a; border-radius: 10px; }
@@ -160,44 +118,6 @@
       animation: mic-pulse 1.2s infinite;
       background-color: #dc2626 !important;
       color: white !important;
-    }
-    .active-voice-highlight {
-      border: 2px solid #e11d48 !important;
-      background-color: #fff1f2 !important;
-    }
-
-    /* Keep phone numbers on a single line */
-    #input-phone {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: clip;
-      min-width: 0;
-      letter-spacing: 0.02em;
-    }
-    .phone-single-line {
-      white-space: nowrap !important;
-      overflow: visible !important;
-      text-overflow: clip !important;
-      min-width: 0;
-    }
-    .phone-button span {
-      white-space: nowrap !important;
-      display: inline-block;
-    }
-    @media (max-width: 640px) {
-      .communication-actions {
-        display: grid !important;
-        grid-template-columns: minmax(0, 1fr) !important;
-      }
-      .communication-actions > a {
-        width: 100%;
-        min-width: 0;
-        min-height: 52px;
-        box-sizing: border-box;
-      }
-      .communication-actions .phone-button {
-        font-size: 15px !important;
-      }
     }
   </style>
 </head>
@@ -299,7 +219,7 @@
           <label class="block text-xs font-semibold text-slate-500 mb-1" data-i18n="filterSearchLabel">Search Village / Name / Phone</label>
           <div class="relative">
             <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
-            <input type="text" id="filter-search" oninput="renderData()" data-i18n-ph="filterSearchPH" placeholder="e.g. Rampur, Paddy, Kumar..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+            <input type="text" id="filter-search" oninput="renderData()" placeholder="e.g. Rampur, Paddy, Kumar..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
         </div>
 
@@ -333,8 +253,6 @@
             <option value="newest" data-i18n="sortNewest">Most Recent Postings</option>
             <option value="workers-high" data-i18n="sortWorkersHigh">Worker Count (High to Low)</option>
             <option value="workers-low" data-i18n="sortWorkersLow">Worker Count (Low to High)</option>
-            <option value="rate-low" data-i18n="sortRateLow">Daily Wage Rate (Low to High)</option>
-            <option value="rate-high" data-i18n="sortRateHigh">Daily Wage Rate (High to Low)</option>
           </select>
         </div>
 
@@ -366,7 +284,7 @@
 
         <!-- Cards Container -->
         <div id="cards-container" class="space-y-4 custom-scrollbar max-h-[700px] overflow-y-auto pr-1">
-          <!-- Dynamic JS Injection -->
+          <!-- Live JS Injected Cards -->
         </div>
       </div>
 
@@ -382,31 +300,11 @@
       <div class="bg-agri-800 text-white px-6 py-4 flex justify-between items-center">
         <div>
           <h3 class="font-bold text-lg" id="modal-title" data-i18n="modalTitle">Create New Listing</h3>
-          <p class="text-xs text-agri-200" id="modal-sub" data-i18n="modalSub">Type manually or click the mic button below for voice fill</p>
+          <p class="text-xs text-agri-200" id="modal-sub" data-i18n="modalSub">Type manually or submit listing details</p>
         </div>
         <button onclick="closePostModal()" class="w-8 h-8 rounded-full bg-agri-900/50 hover:bg-agri-900 text-white flex items-center justify-center transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
-      </div>
-
-      <!-- OPTIONAL VOICE ASSISTANT PROMPT BAR -->
-      <div class="bg-slate-100 border-b border-slate-200 px-6 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div class="flex items-center gap-3">
-          <button type="button" id="modalMicBtn" onclick="toggleContinuousVoice()" class="w-10 h-10 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-md transition flex-shrink-0">
-            <i class="fa-solid fa-microphone text-base"></i>
-          </button>
-          <div>
-            <p class="text-xs font-bold text-slate-800" id="voiceStatusTitle" data-i18n="voiceBarTitle">🎙️ Voice Assistant (Optional)</p>
-            <p class="text-[11px] text-slate-600 font-medium" id="voiceStatusText" data-i18n="voiceBarSub">Click mic to start voice guided filling only if needed.</p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-2 self-end sm:self-auto">
-          <button type="button" onclick="skipToNextVoiceField()" class="bg-white text-slate-700 border border-slate-300 font-bold px-2.5 py-1 rounded-lg text-xs hover:bg-slate-50 transition flex items-center gap-1">
-            <i class="fa-solid fa-forward text-[10px]"></i> Skip / Next Field
-          </button>
-          <span id="voiceLangBadge" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-200 text-slate-800 uppercase">EN</span>
-        </div>
       </div>
 
       <!-- Modal Body (Form) -->
@@ -420,14 +318,14 @@
           <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2" data-i18n="lblPostType">I am posting as:</label>
           <div class="grid grid-cols-2 gap-3">
             <label class="border-2 border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50 has-[:checked]:border-agri-600 has-[:checked]:bg-agri-50 transition">
-              <input type="radio" name="postType" value="available" checked onchange="toggleFormFields('available')" class="accent-agri-600">
+              <input type="radio" name="postType" value="available" checked class="accent-agri-600">
               <div>
                 <p class="text-xs font-bold text-slate-800" data-i18n="optGroupLeader">Labor Contractor / Group Leader</p>
                 <p class="text-[10px] text-slate-500" data-i18n="optGroupSub">I have available workers</p>
               </div>
             </label>
             <label class="border-2 border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 transition">
-              <input type="radio" name="postType" value="needed" onchange="toggleFormFields('needed')" class="accent-amber-500">
+              <input type="radio" name="postType" value="needed" class="accent-amber-500">
               <div>
                 <p class="text-xs font-bold text-slate-800" data-i18n="optFarmer">Farmer / Land Owner</p>
                 <p class="text-[10px] text-slate-500" data-i18n="optFarmerSub">I need workers for my field</p>
@@ -440,71 +338,70 @@
 
         <!-- Name & Phone -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div id="field-wrap-name" class="p-2 rounded-2xl transition">
-            <label id="lbl-name" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNameGroup">Group Leader / Owner Name *</label>
-            <input type="text" id="input-name" required data-i18n-ph="phName" placeholder="e.g. Ramesh Kumar" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNameGroup">Name *</label>
+            <input type="text" id="input-name" required placeholder="e.g. Ramesh Kumar" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
-          <div id="field-wrap-phone" class="p-2 rounded-2xl transition">
+          <div>
             <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblPhone">Phone Number *</label>
-            <input type="tel" id="input-phone" required maxlength="10" inputmode="numeric" data-i18n-ph="phPhone" placeholder="10-digit mobile number" pattern="[0-9]{10}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+            <input type="tel" id="input-phone" required maxlength="10" placeholder="10-digit mobile number" pattern="[0-9]{10}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
         </div>
 
         <!-- Village & Location Details -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div id="field-wrap-village" class="p-2 rounded-2xl transition">
-            <label id="lbl-village" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblVillageGroup">Owner / Group Village Name *</label>
-            <input type="text" id="input-village" required data-i18n-ph="phVillage" placeholder="e.g. Medak, Village X" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblVillageGroup">Village Name *</label>
+            <input type="text" id="input-village" required placeholder="e.g. Medak, Village X" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
 
-          <div id="field-wrap-workLocation" class="p-2 rounded-2xl transition">
+          <div>
             <div class="flex justify-between items-center mb-1">
-              <label id="lbl-workLocation" class="text-xs font-bold text-slate-700" data-i18n="lblWorkLocGroup">Work Current Location *</label>
+              <label class="text-xs font-bold text-slate-700" data-i18n="lblWorkLocGroup">Work Location *</label>
               <button type="button" onclick="getCurrentLocation()" class="text-[11px] text-agri-700 font-bold hover:underline flex items-center gap-1">
-                <i class="fa-solid fa-crosshairs text-rose-500"></i> <span data-i18n="btnGps">Get My Live Location</span>
+                <i class="fa-solid fa-crosshairs text-rose-500"></i> Get Live Location
               </button>
             </div>
             <div class="relative">
-              <input type="text" id="input-workLocation" required data-i18n-ph="phWorkLoc" placeholder="e.g. Near Water Tank, Field 4" class="w-full px-3 py-2 pr-8 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+              <input type="text" id="input-workLocation" required placeholder="e.g. Near Water Tank, Field 4" class="w-full px-3 py-2 pr-8 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
               <i class="fa-solid fa-location-dot absolute right-3 top-2.5 text-rose-500 text-xs"></i>
             </div>
-            <p id="location-status" class="text-[10px] text-slate-500 mt-1" data-i18n="gpsPrompt">Click "Get My Live Location" to detect automatically.</p>
           </div>
         </div>
 
         <!-- Hidden Coordinates -->
-        <input type="hidden" id="input-lat" value="">
-        <input type="hidden" id="input-lng" value="">
+        <input type="hidden" id="input-lat" value="17.3850">
+        <input type="hidden" id="input-lng" value="78.4867">
 
-        <!-- Worker Count & Expected Wages -->
+        <!-- Worker Count & Wages -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div id="field-wrap-workerCount" class="p-2 rounded-2xl transition">
-            <label id="lbl-workerCount" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWorkersGroup">Number of Workers *</label>
-            <input type="number" id="input-workerCount" min="1" max="200" required data-i18n-ph="phWorkers" placeholder="e.g. 15" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWorkersGroup">Number of Workers *</label>
+            <input type="number" id="input-workerCount" min="1" max="200" required placeholder="e.g. 15" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
-          <div id="field-wrap-wage" class="p-2 rounded-2xl transition">
-            <label id="lbl-wage" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWageGroup">Daily Rate per Worker (₹) / Acre Rate *</label>
-            <input type="text" id="input-wage" required data-i18n-ph="phWage" placeholder="e.g. ₹550 / day or ₹4000/acre" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWageGroup">Daily Rate (₹) / Acre Rate *</label>
+            <input type="text" id="input-wage" required placeholder="e.g. ₹550 / day" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
         </div>
 
-        <!-- Crop & Activity Specialization -->
+        <!-- Crop & Activity -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblCropType">Primary Crop / Work Type *</label>
           <select id="input-crop" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
-            <option value="Paddy" data-i18n="optPaddy">🌾 Paddy Cultivation (Transplanting, Cutting, Threshing)</option>
-            <option value="Tomato" data-i18n="optTomato">🍅 Tomato & Vegetable Harvesting / Packing</option>
-            <option value="Maize" data-i18n="optMaize">🌽 Maize Harvesting & Cob Shelling</option>
-            <option value="Cotton" data-i18n="optCotton">☁️ Cotton Picking & Field Clearing</option>
-            <option value="Spraying" data-i18n="optSpraying">🧪 Pesticide / Fertilizer Spraying</option>
-            <option value="Tractor" data-i18n="optTractor">🚜 Tractor Driving & Land Preparation</option>
+            <option value="Paddy">🌾 Paddy Cultivation (Transplanting, Cutting, Threshing)</option>
+            <option value="Tomato">🍅 Tomato & Vegetable Harvesting / Packing</option>
+            <option value="Maize">🌽 Maize Harvesting & Cob Shelling</option>
+            <option value="Cotton">☁️ Cotton Picking & Field Clearing</option>
+            <option value="Spraying">🧪 Pesticide / Fertilizer Spraying</option>
+            <option value="Tractor">🚜 Tractor Driving & Land Preparation</option>
           </select>
         </div>
 
         <!-- Additional Notes -->
-        <div id="field-wrap-notes" class="p-2 rounded-2xl transition">
-          <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNotes">Additional Work Details / Transport Needs</label>
-          <textarea id="input-notes" rows="2" data-i18n-ph="phNotes" placeholder="e.g. Food provided, transport available, start work early morning..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none"></textarea>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNotes">Additional Work Details</label>
+          <textarea id="input-notes" rows="2" placeholder="e.g. Food provided, transport available..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none"></textarea>
         </div>
 
         <!-- Submit Button -->
@@ -524,990 +421,350 @@
     </div>
   </footer>
 
-  <!-- MULTI-LANGUAGE TRANSLATION DICTIONARIES -->
+  <!-- SCRIPT & DATABASE INTEGRATION -->
   <script>
+    // ========================================================
+    // 1. FIREBASE REALTIME DATABASE CONFIGURATION
+    // Replace credentials below with your Firebase Project details:
+    // ========================================================
+    const firebaseConfig = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+
+    // Application state
+    let activeTab = 'available'; // 'available' or 'needed'
+    let currentListings = [];
+    let map = null;
+    let markersGroup = null;
+
+    // Translation Dictionaries
     const translations = {
       en: {
         appSubtitle: "Direct Farm Workforce & Voice Assistant Matcher",
         postBtn: "Post Availability / Need",
         badgeTitle: "🌾 Smart Agricultural Network & Flexible Form Posting",
         heroTitle: "Connect Farmers & Farm Workers Nearby",
-        heroDesc: "Fill details by typing directly into the form or optionally enable the voice assistant. You can edit mistakes anytime or delete posts once work is completed.",
+        heroDesc: "Fill details by typing directly into the form. Edit mistakes anytime or delete posts once work is completed.",
         tabAvailable: "Available Workers Groups",
         tabNeeded: "Farmers Need Workers",
         quickPostGroup: "Post Available Group",
         quickPostNeed: "Post Labor Required",
         filterSearchLabel: "Search Village / Name / Phone",
-        filterSearchPH: "e.g. Rampur, Paddy, Kumar...",
         filterCropLabel: "Crop / Work Category",
         optAllCrops: "All Crop Types",
-        optPaddy: "🌾 Paddy Cultivation (Transplanting/Cutting)",
-        optTomato: "🍅 Tomato & Vegetable Picking",
-        optMaize: "🌽 Maize Harvesting",
-        optCotton: "☁️ Cotton Picking",
-        optSpraying: "🧪 Pesticide Spraying",
-        optTractor: "🚜 Tractor & Heavy Operation",
         filterRadiusLabel: "Distance Radius",
         filterSortLabel: "Sort Results By",
         sortNewest: "Most Recent Postings",
         sortWorkersHigh: "Worker Count (High to Low)",
         sortWorkersLow: "Worker Count (Low to High)",
-        sortRateLow: "Daily Wage Rate (Low to High)",
-        sortRateHigh: "Daily Wage Rate (High to Low)",
         mapHeader: "Live Radar & Map Locations",
         mapSub: "Click marker to contact or navigate",
         titleAvailableListings: "Available Labor Groups Nearby",
         titleNeededListings: "Farmers Looking for Laborers",
-        cardOwnerVillage: "Owner's Village",
-        cardWorkLoc: "Work Location",
-        cardWorkers: "Number of Workers",
-        cardOfferedWage: "Offered Wage",
-        cardCall: "Call",
-        cardWhatsapp: "WhatsApp",
-        cardOpenMaps: "Open Google Maps",
-        cardEdit: "Edit Post",
-        cardDelete: "Delete / Work Done",
-        cardAvailableBadge: "👥 Worker Group Available",
-        cardNeededBadge: "🌾 Farmer Requires Workers",
         modalTitle: "Create New Listing",
         modalTitleEdit: "Update / Correct Listing Details",
-        modalSub: "Type manually or click the mic button below for voice fill",
-        voiceBarTitle: "🎙️ Voice Assistant (Optional)",
-        voiceBarSub: "Click mic to start voice guided filling only if needed.",
-        lblPostType: "I am posting as:",
-        optGroupLeader: "Labor Contractor / Group Leader",
-        optGroupSub: "I have available workers",
-        optFarmer: "Farmer / Land Owner",
-        optFarmerSub: "I need workers for my field",
-        lblNameGroup: "Group Leader / Owner Name *",
-        lblNameFarmer: "Farmer / Landowner Name *",
-        lblPhone: "Phone Number *",
-        lblVillageGroup: "Leader's Home Village *",
-        lblVillageFarmer: "Farmer's Village Name *",
-        lblWorkLocGroup: "Work Current Location / Stand *",
-        lblWorkLocFarmer: "Work Field Current Location *",
-        btnGps: "Get My Live Location",
-        gpsPrompt: "Click 'Get My Live Location' to detect automatically.",
-        lblWorkersGroup: "Number of Workers Available in Group *",
-        lblWorkersFarmer: "Number of Workers Needed *",
-        lblWageGroup: "Expected Daily Wage Rate (₹) *",
-        lblWageFarmer: "Offered Wage Rate (₹) *",
-        lblCropType: "Primary Crop / Work Type *",
-        lblNotes: "Additional Work Details / Transport Needs",
-        phName: "e.g. Ramesh Kumar",
-        phPhone: "10-digit mobile number",
-        phVillage: "e.g. Medak, Village X",
-        phWorkLoc: "e.g. Near Water Tank, Field 4",
-        phWorkers: "e.g. 15",
-        phWage: "e.g. ₹550 / day or ₹4000/acre",
-        phNotes: "e.g. Food provided, transport available, start work early morning...",
         btnSubmit: "Publish Listing Now",
         btnUpdateSubmit: "Save Changes",
         footer1: "🌾 AgriLabor Connect - Empowering Farmers & Agricultural Labor Groups",
-        footer2: "Helping farm owners hire local labor gangs for Paddy, Tomatoes, Maize, Cotton & Seasonal Harvesting.",
-        noResults: "No postings found. Try expanding distance radius."
+        footer2: "Helping farm owners hire local labor gangs for Paddy, Tomatoes, Maize, Cotton & Seasonal Harvesting."
       },
-
       te: {
         appSubtitle: "రైతులు మరియు కూలీల అనుసంధాన వేదిక",
         postBtn: "లభ్యత / అవసరం నమోదు చేయండి",
         badgeTitle: "🌾 ఆధునిక వ్యవసాయ నెట్‌వర్క్ & సులువైన నమోదు",
         heroTitle: "మీ సమీపంలోని రైతులు మరియు కూలీల గ్రూపులను కనుగొనండి",
-        heroDesc: "వివరాలను నేరుగా టైప్ చేయవచ్చు లేదా వాయిస్ ద్వారా నింపవచ్చు. పొరపాట్లు ఉంటే సవరించుకోవచ్చు లేదా పని పూర్తయ్యాక పోస్ట్ తొలగించవచ్చు.",
+        heroDesc: "వివరాలను నేరుగా టైప్ చేయవచ్చు. పొరపాట్లు ఉంటే సవరించుకోవచ్చు లేదా పని పూర్తయ్యాక పోస్ట్ తొలగించవచ్చు.",
         tabAvailable: "అందుబాటులో ఉన్న కూలీల గ్రూపులు",
         tabNeeded: "కూలీలు కావలసిన రైతులు",
         quickPostGroup: "కూలీల గ్రూప్ పోస్ట్ చేయండి",
         quickPostNeed: "కూలీల అవసరం పోస్ట్ చేయండి",
         filterSearchLabel: "గ్రామం / పేరు / ఫోన్ వెతకండి",
-        filterSearchPH: "ఉదా: రాంపూర్, వరి, కుమార్...",
         filterCropLabel: "పంట / పని రకం",
         optAllCrops: "అన్ని పంటల పనులు",
-        optPaddy: "🌾 వరి సాగు (నాట్లు / కోతలు)",
-        optTomato: "🍅 టమాటో మరియు కూరగాయల కోత",
-        optMaize: "🌽 జొన్న / మొక్కజొన్న కోతలు",
-        optCotton: "☁️ పత్తి ఏరడం",
-        optSpraying: "🧪 పురుగుమందుల పిచికారీ",
-        optTractor: "🚜 ట్రాక్టర్ దుక్కి పనులు",
         filterRadiusLabel: "దూరం పరిధి",
         filterSortLabel: "క్రమబద్ధీకరణ",
         sortNewest: "తాజా పోస్టింగ్‌లు",
         sortWorkersHigh: "కూలీల సంఖ్య (ఎక్కువ నుండి తక్కువ)",
         sortWorkersLow: "కూలీల సంఖ్య (తక్కువ నుండి ఎక్కువ)",
-        sortRateLow: "కూలి రేటు (తక్కువ నుండి ఎక్కువ)",
-        sortRateHigh: "కూలి రేటు (ఎక్కువ నుండి తక్కువ)",
         mapHeader: "లైవ్ మ్యాప్ & లొకేషన్లు",
         mapSub: "సంప్రదించడానికి లేదా గూగుల్ మ్యాప్స్ కోసం క్లిక్ చేయండి",
         titleAvailableListings: "సమీపంలో అందుబాటులో ఉన్న కూలీలు",
         titleNeededListings: "కూలీల కోసం చూస్తున్న రైతులు",
-        cardOwnerVillage: "యజమాని గ్రామం",
-        cardWorkLoc: "పని జరుగుతున్న లొకేషన్",
-        cardWorkers: "కూలీల సంఖ్య",
-        cardOfferedWage: "ఇచ్చే కూలి రేటు",
-        cardCall: "కాల్ చేయండి",
-        cardWhatsapp: "వాట్సాప్",
-        cardOpenMaps: "గూగుల్ మ్యాప్స్ తెరువు",
-        cardEdit: "సవరించు (Edit)",
-        cardDelete: "తొలగించు / పని పూర్తయింది",
-        cardAvailableBadge: "👥 కూలీల గ్రూప్ అందుబాటులో ఉంది",
-        cardNeededBadge: "🌾 రైతుకు కూలీలు కావాలి",
         modalTitle: "కొత్త సమాచారం నమోదు చేయండి",
         modalTitleEdit: "సమాచారాన్ని సవరించండి",
-        modalSub: "టైప్ చేయవచ్చు లేదా అవసరమైతే మైక్ బటన్ నొక్కి మాట్లాడవచ్చు",
-        voiceBarTitle: "🎙️ వాయిస్ అసిస్టెంట్ (ఐచ్ఛికం)",
-        voiceBarSub: "అవసరమైతే మాత్రమే మైక్ బటన్ నొక్కి మాట్లాడండి.",
-        lblPostType: "మీరు ఎవరు?",
-        optGroupLeader: "కూలీల మేస్త్రీ / గ్రూప్ లీడర్",
-        optGroupSub: "నా దగ్గర పనివాళ్ళు ఉన్నారు",
-        optFarmer: "రైతు / పొలం యజమాని",
-        optFarmerSub: "నా పొలానికి కూలీలు కావాలి",
-        lblNameGroup: "మేస్త్రీ / నాయకుడి పేరు *",
-        lblNameFarmer: "రైతు / యజమాని పేరు *",
-        lblPhone: "ఫోన్ నంబర్ *",
-        lblVillageGroup: "మేస్త్రీ స్వంత గ్రామం *",
-        lblVillageFarmer: "రైతు గ్రామం పేరు *",
-        lblWorkLocGroup: "ప్రస్తుతం కూలీలు ఉన్న స్థలం *",
-        lblWorkLocFarmer: "పొలం ఉన్న ఖచ్చితమైన లొకేషన్ *",
-        btnGps: "నా లైవ్ GPS లొకేషన్ తీసుకో",
-        gpsPrompt: "ఆటోమేటిక్‌గా లొకేషన్ గుర్తించడానికి 'GPS లొకేషన్ తీసుకో' క్లిక్ చేయండి.",
-        lblWorkersGroup: "గ్రూప్‌లో ఉన్న కూలీల సంఖ్య *",
-        lblWorkersFarmer: "కావలసిన కూలీల సంఖ్య *",
-        lblWageGroup: "ఆశిస్తున్న రోజువారీ కూలి (₹) *",
-        lblWageFarmer: "ఇచ్చే రోజువారీ కూలి రేటు (₹) *",
-        lblCropType: "ప్రధాన పంట / పని రకం *",
-        lblNotes: "అదనపు వివరాలు / రవాణా సౌకర్యం",
-        phName: "ఉదా: రమేష్ కుమార్",
-        phPhone: "10 అంకెల మొబైల్ నంబర్",
-        phVillage: "ఉదా: మెదక్, విలేజ్ X",
-        phWorkLoc: "ఉదా: వాటర్ ట్యాంక్ దగ్గర, పొలం 4",
-        phWorkers: "ఉదా: 15",
-        phWage: "ఉదా: ₹550 / రోజుకు లేదా ₹4000/ఎకరాకు",
-        phNotes: "ఉదా: భోజనం ఇవ్వబడును, వాహన సౌకర్యం ఉంది...",
-        btnSubmit: "వెంటనే పోస్ట్ చేయండి",
-        btnUpdateSubmit: "సవరణలు భద్రపరచు",
-        footer1: "🌾 అగ్రిలేబర్ కనెక్ట్ - రైతులు మరియు కూలీలకు డిజిటల్ సేవలు",
-        footer2: "వరి, టమాటో, జొన్న, పత్తి పంట పనుల కోసం కూలీలను త్వరగా పొందే సదుపాయం.",
-        noResults: "ఎలాంటి పోస్టింగ్‌లు కనుగొనబడలేదు. రేడియస్ పెంచడానికి ప్రయత్నించండి."
-      },
-
-      hi: {
-        appSubtitle: "किसान और कृषि मजदूरों का डिजिटल नेटवर्क",
-        postBtn: "उपलब्धता / आवश्यकता पोस्ट करें",
-        badgeTitle: "🌾 स्मार्ट कृषि नेटवर्क व आसान फॉर्म",
-        heroTitle: "पास के किसानों और मजदूर समूहों से जुड़ें",
-        heroDesc: "विवरण टाइप करें या वॉयस से भरें। गलतियां होने पर कभी भी एडिट करें या काम पूरा होने पर पोस्ट हटाएं।",
-        tabAvailable: "उपलब्ध मजदूर समूह",
-        tabNeeded: "किसान जिन्हें मजदूर चाहिए",
-        quickPostGroup: "उपलब्ध समूह पोस्ट करें",
-        quickPostNeed: "मजदूर आवश्यकता पोस्ट करें",
-        filterSearchLabel: "गांव / नाम / फोन खोजें",
-        filterSearchPH: "जैसे: रामपुर, धान, कुमार...",
-        filterCropLabel: "फसल / कार्य श्रेणी",
-        optAllCrops: "सभी फसलें",
-        optPaddy: "🌾 धान की खेती (रोपाई / कटाई)",
-        optTomato: "🍅 टमाटर और सब्जी तुड़ाई",
-        optMaize: "🌽 मक्का की कटाई",
-        optCotton: "☁️ कपास की तुड़ाई",
-        optSpraying: "🧪 कीटनाशक छिड़काव",
-        optTractor: "🚜 ट्रैक्टर व जुताई कार्य",
-        filterRadiusLabel: "दूरी त्रिज्या",
-        filterSortLabel: "क्रमानुसार क्रमबद्ध करें",
-        sortNewest: "नवीनतम पोस्टिंग",
-        sortWorkersHigh: "मजदूर संख्या (अधिक से कम)",
-        sortWorkersLow: "मजदूर संख्या (कम से अधिक)",
-        sortRateLow: "दैनिक मजदूरी (कम से अधिक)",
-        sortRateHigh: "दैनिक मजदूरी (अधिक से कम)",
-        mapHeader: "लाइव मैप व लोकेशन",
-        mapSub: "संपर्क करने या गूगल मैप्स खोलने के लिए क्लिक करें",
-        titleAvailableListings: "पास में उपलब्ध मजदूर समूह",
-        titleNeededListings: "मजदूर खोज रहे किसान",
-        cardOwnerVillage: "मालिक का गांव",
-        cardWorkLoc: "कार्य स्थल लोकेशन",
-        cardWorkers: "मजदूरों की संख्या",
-        cardOfferedWage: "दी जाने वाली मजदूरी",
-        cardCall: "कॉल करें",
-        cardWhatsapp: "व्हाट्सएप",
-        cardOpenMaps: "गूगल मैप्स खोलें",
-        cardEdit: "संशोधित करें (Edit)",
-        cardDelete: "हटाएं / कार्य पूर्ण",
-        cardAvailableBadge: "👥 मजदूर समूह उपलब्ध है",
-        cardNeededBadge: "🌾 किसान को मजदूर चाहिए",
-        modalTitle: "नई पोस्टिंग बनाएं",
-        modalTitleEdit: "विवरण में सुधार करें",
-        modalSub: "टाइप करें या आवश्यकता होने पर वॉयस असिस्टेंट चालू करें",
-        voiceBarTitle: "🎙️ वॉयस असिस्टेंट (वैकल्पिक)",
-        voiceBarSub: "आवश्यकता होने पर ही माइक दबाकर बोलें।",
-        lblPostType: "आप किस रूप में पोस्ट कर रहे हैं?",
-        optGroupLeader: "मजदूर ठेकेदार / ग्रुप लीडर",
-        optGroupSub: "मेरे पास मजदूर उपलब्ध हैं",
-        optFarmer: "किसान / खेत मालिक",
-        optFarmerSub: "मुझे खेत के लिए मजदूर चाहिए",
-        lblNameGroup: "ग्रुप लीडर / ठेकेदार का नाम *",
-        lblNameFarmer: "किसान / खेत मालिक का नाम *",
-        lblPhone: "फोन नंबर *",
-        lblVillageGroup: "ठेकेदार का मूल गांव *",
-        lblVillageFarmer: "किसान के गांव का नाम *",
-        lblWorkLocGroup: "वर्तमान में मजदूरों का स्थान *",
-        lblWorkLocFarmer: "खेत की सटीक लोकेशन *",
-        btnGps: "मेरी लाइव GPS लोकेशन प्राप्त करें",
-        gpsPrompt: "स्वचालित लोकेशन के लिए 'GPS लोकेशन प्राप्त करें' पर क्लिक करें।",
-        lblWorkersGroup: "समूह में उपलब्ध मजदूरों की संख्या *",
-        lblWorkersFarmer: "आवश्यक मजदूरों की संख्या *",
-        lblWageGroup: "अपेक्षित दैनिक मजदूरी (₹) *",
-        lblWageFarmer: "दी जाने वाली मजदूरी (₹) *",
-        lblCropType: "मुख्य फसल / कार्य प्रकार *",
-        lblNotes: "अतिरिक्त विवरण / परिवहन सुविधा",
-        phName: "जैसे: रमेश कुमार",
-        phPhone: "10 अंकों का मोबाइल नंबर",
-        phVillage: "जैसे: मेदक, गांव X",
-        phWorkLoc: "जैसे: वॉटर टैंक के पास, खेत 4",
-        phWorkers: "जैसे: 15",
-        phWage: "जैसे: ₹550 / दिन या ₹4000/एकड़",
-        phNotes: "जैसे: भोजन उपलब्ध है, वाहन सुविधा उपलब्ध है...",
-        btnSubmit: "अभी प्रकाशित करें",
-        btnUpdateSubmit: "बदलाव सहेजें",
-        footer1: "🌾 एग्रीलेबर कनेक्ट - किसानों और मजदूरों का डिजिटल साथी",
-        footer2: "धान, टमाटर, मक्का और कपास की कटाई हेतु स्थानीय मजदूरों से तुरंत जुड़ें।",
-        noResults: "कोई पोस्टिंग नहीं मिली। दूरी सीमा बढ़ाकर देखें।"
-      },
-
-      ta: {
-        appSubtitle: "விவசாயிகள் மற்றும் தொழிலாளர்களின் தளம்",
-        postBtn: "பதிவு செய்ய",
-        badgeTitle: "🌾 நவீன விவசாய நெட்வொர்க் & எளிய பதிவு",
-        heroTitle: "அருகிலுள்ள விவசாயிகள் மற்றும் தொழிலாளர்களைக் கண்டறியவும்",
-        heroDesc: "டைப் செய்யவும் அல்லது குரல் மூலம் நிரப்பவும். தவறுகளை எப்போது வேண்டுமானாலும் திருத்தலாம் அல்லது வேலை முடிந்ததும் பதிவை நீக்கலாம்.",
-        tabAvailable: "கிடைக்கும் தொழிலாளர் குழுக்கள்",
-        tabNeeded: "ஆட்கள் தேவைப்படும் விவசாயிகள்",
-        quickPostGroup: "தொழிலாளர் குழுவை பதிவு செய்",
-        quickPostNeed: "ஆட்கள் தேவையை பதிவு செய்",
-        filterSearchLabel: "ஊர் / பெயர் / போன் தேடுக",
-        filterSearchPH: "எ.கா: ராம்பூர், நெல், குமார்...",
-        filterCropLabel: "பயிர் / வேலை வகை",
-        optAllCrops: "அனைத்து பயிர் வேலைகள்",
-        optPaddy: "🌾 நெல் விவசாயம் (நடுவு / அறுவடை)",
-        optTomato: "🍅 தக்காளி மற்றும் காய்கறி பறித்தல்",
-        optMaize: "🌽 சோளம் அறுவடை",
-        optCotton: "☁️ பருத்தி எடுத்தல்",
-        optSpraying: "🧪 மருந்து தெளித்தல்",
-        optTractor: "🚜 டிராக்டர் உழவு வேலைகள்",
-        filterRadiusLabel: "சுற்றளவு தூரம்",
-        filterSortLabel: "வரிசைப்படுத்துக",
-        sortNewest: "சமீபத்திய பதிவுகள்",
-        sortWorkersHigh: "தொழிலாளர்கள் (அதிகத்திலிருந்து குறைவு)",
-        sortWorkersLow: "தொழிலாளர்கள் (குறைவிலிருந்து அதிகம்)",
-        sortRateLow: "தினசரி கூலி (குறைவிலிருந்து அதிகம்)",
-        sortRateHigh: "தினசரி கூலி (அதிகத்திலிருந்து குறைவு)",
-        mapHeader: "நேரடி வரைபடம் & இடங்கள்",
-        mapSub: "கூகுள் மேப்ஸ் திறக்க குறியீட்டை கிளிக் செய்யவும்",
-        titleAvailableListings: "அருகில் கிடைக்கும் தொழிலாளர்கள்",
-        titleNeededListings: "தொழிலாளர்களைத் தேடும் விவசாயிகள்",
-        cardOwnerVillage: "உரிமையாளரின் ஊர்",
-        cardWorkLoc: "வேலை நடக்கும் இடம்",
-        cardWorkers: "தொழிலாளர்கள் எண்ணிக்கை",
-        cardOfferedWage: "வழங்கப்படும் கூலி",
-        cardCall: "அழைக்கவும்",
-        cardWhatsapp: "வாட்ஸ்அப்",
-        cardOpenMaps: "கூகுள் மேப்ஸ் திறக்க",
-        cardEdit: "திருத்து (Edit)",
-        cardDelete: "நீக்கு / வேலை முடிந்தது",
-        cardAvailableBadge: "👥 தொழிலாளர் குழு தயாராக உள்ளது",
-        cardNeededBadge: "🌾 விவசாயிக்கு ஆட்கள் தேவை",
-        modalTitle: "புதிய தகவலை பதிவு செய்க",
-        modalTitleEdit: "தகவல்களை திருத்தவும்",
-        modalSub: "டைப் செய்யவும் அல்லது தேவைப்பட்டால் மைக் அழுத்தி பேசவும்",
-        voiceBarTitle: "🎙️ வாய்ஸ் அசிஸ்டன்ட் (விருப்ப விருப்பம்)",
-        voiceBarSub: "தேவைப்பட்டால் மட்டுமே மைக் அழுத்தி பேசவும்.",
-        lblPostType: "நீங்கள் யார்?",
-        optGroupLeader: "தொழிலாளர் மேஸ்திரி / தலைவர்",
-        optGroupSub: " என்னிடம் ஆட்கள் உள்ளனர்",
-        optFarmer: "விவசாயி / நில உரிமையாளர்",
-        optFarmerSub: "எனது நிலத்திற்கு ஆட்கள் தேவை",
-        lblNameGroup: "மேஸ்திரி / தலைவர் பெயர் *",
-        lblNameFarmer: "விவசாயி / உரிமையாளர் பெயர் *",
-        lblPhone: "தொலைபேசி எண் *",
-        lblVillageGroup: "மேஸ்திரியின் சொந்த ஊர் *",
-        lblVillageFarmer: "விவசாயியின் ஊர் பெயர் *",
-        lblWorkLocGroup: "தற்போது ஆட்கள் இருக்கும் இடம் *",
-        lblWorkLocFarmer: "நிலம் இருக்கும் துல்லியமான இடம் *",
-        btnGps: "எனது நேரடி GPS இடத்தை எடு",
-        gpsPrompt: "தானாக இடத்தை கண்டறிய 'GPS இடத்தை எடு' கிளிக் செய்யவும்.",
-        lblWorkersGroup: "குழுவில் உள்ள தொழிலாளர்கள் எண்ணிக்கை *",
-        lblWorkersFarmer: "தேவைப்படும் தொழிலாளர்கள் எண்ணிக்கை *",
-        lblWageGroup: "எதிர்பார்க்கும் தினசரி கூலி (₹) *",
-        lblWageFarmer: "வழங்கும் தினசரி கூலி (₹) *",
-        lblCropType: "முதன்மை பயிர் / வேலை வகை *",
-        lblNotes: "கூடுதல் விவரங்கள் / வாகன வசதி",
-        phName: "எ.கா: ரமேஷ் குமார்",
-        phPhone: "10 இலக்க மொபைல் எண்",
-        phVillage: "எ.கா: மேடக், ஊர் X",
-        phWorkLoc: "எ.கா: மேல்நிலைத் தொட்டி அருகில்",
-        phWorkers: "எ.கா: 15",
-        phWage: "எ.கா: ₹550 / நாள் அல்லது ₹4000/ஏக்கர்",
-        phNotes: "எ.கா: உணவு வழங்கப்படும், வாகன வசதி உண்டு...",
-        btnSubmit: "இப்பொழுதே பதிவு செய்",
-        btnUpdateSubmit: "மாற்றங்களை சேமிக்கவும்",
-        footer1: "🌾 அக்ரிலேபர் கனெக்ட் - விவசாயிகள் மற்றும் தொழிலாளர்களின் தளம்",
-        footer2: "நெல், தக்காளி, சோளம் மற்றும் பருத்தி அறுவடைக்கு உள்ளூர் ஆட்களை பெறலாம்.",
-        noResults: "பதிவுகள் எதுவும் இல்லை. தூர வரம்பை அதிகரித்து தேடவும்."
+        btnSubmit: "ఇప్పుడే పోస్ట్ చేయండి",
+        btnUpdateSubmit: "మార్పులను సేవ్ చేయండి",
+        footer1: "🌾 అగ్రిలేబర్ కనెక్ట్ - రైతులు మరియు కూలీల శ్రేయోభివృద్ధి వేదిక",
+        footer2: "వరి, టమాటో, మొక్కజొన్న, పత్తి ఇతర పంటల పనుల కోసం సహాయపడుతుంది."
       }
     };
 
-    let currentLang = 'en';
-
-    function changeLanguage(lang) {
-      currentLang = lang;
-      const dict = translations[lang] || translations['en'];
-
-      document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (dict[key]) el.innerText = dict[key];
-      });
-
-      document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-        const key = el.getAttribute('data-i18n-ph');
-        if (dict[key]) el.setAttribute('placeholder', dict[key]);
-      });
-
-      document.getElementById('voiceLangBadge').innerText = lang.toUpperCase();
-
-      const radioChecked = document.querySelector('input[name="postType"]:checked');
-      if (radioChecked) toggleFormFields(radioChecked.value);
-      renderData();
-    }
-  </script>
-
-  <!-- APPLICATION DATA HANDLING & MAP LOGIC -->
-  <script>
-    const initialData = [
-      {
-        id: "lab-101",
-        type: "available",
-        ownerName: "Venkat Reddy",
-        phone: "9876543210",
-        village: "Rampur",
-        workLocation: "Rampur Main Circle",
-        workerCount: 18,
-        crop: "Paddy",
-        wage: "₹550 / day",
-        notes: "Experienced team for paddy transplanting and harvesting. Transport included.",
-        lat: 17.3850,
-        lng: 78.4867,
-        date: "Today"
-      },
-      {
-        id: "lab-102",
-        type: "available",
-        ownerName: "Suresh Kurma",
-        phone: "9123456789",
-        village: "Gajwel",
-        workLocation: "Gajwel Bypass Road",
-        workerCount: 12,
-        crop: "Tomato",
-        wage: "₹500 / day",
-        notes: "Fast hand picking for tomatoes, green chillies, and brinjal.",
-        lat: 17.4200,
-        lng: 78.5000,
-        date: "1 day ago"
-      },
-      {
-        id: "req-201",
-        type: "needed",
-        ownerName: "Mallaiah (Farmer)",
-        phone: "9988776655",
-        village: "Siddipet",
-        workLocation: "Field Near Canal Bridge",
-        workerCount: 25,
-        crop: "Maize",
-        wage: "₹600 / day",
-        notes: "Urgent need for maize cob cutting. Breakfast provided.",
-        lat: 17.3600,
-        lng: 78.4500,
-        date: "2 hours ago"
-      }
-    ];
-
-    let currentTab = 'available';
-    let listings = [];
-    let map, mapMarkers = [];
-    let currentRadiusCircle = null;
-    let baseCenter = [17.3850, 78.4867];
-
-    // CONTINUOUS SPEECH RECOGNITION STATE (MANUALLY TRIGGERED ONLY)
-    let recognition = null;
-    let isContinuousListening = false;
-    let currentVoiceStepIndex = 0;
-
-    const voiceSteps = [
-      { fieldId: 'input-name', wrapId: 'field-wrap-name', promptEn: "Speak your Name.", promptTe: "మీ పేరు చెప్పండి.", promptHi: "अपना नाम बोलें।", promptTa: "உங்கள் பெயரை கூறவும்." },
-      { fieldId: 'input-phone', wrapId: 'field-wrap-phone', promptEn: "Speak your 10-digit Phone Number.", promptTe: "మీ 10 అంకెల ఫోన్ నంబర్ చెప్పండి.", promptHi: "अपना 10 अंकों का फोन नंबर बोलें।", promptTa: "உங்கள் 10 இலக்க போన్ எண்ணை கூறவும்." },
-      { fieldId: 'input-village', wrapId: 'field-wrap-village', promptEn: "Speak your Village Name.", promptTe: "మీ గ్రామం పేరు చెప్పండి.", promptHi: "अपने गांव का नाम बोलें।", promptTa: "உங்கள் ஊர் பெயரை கூறவும்." },
-      { fieldId: 'input-workLocation', wrapId: 'field-wrap-workLocation', promptEn: "Speak Work Current Location.", promptTe: "పని జరుగుతున్న స్థలం చెప్పండి.", promptHi: "काम का स्थान बोलें।", promptTa: "வேலை நடக்கும் இடத்தை கூறவும்." },
-      { fieldId: 'input-workerCount', wrapId: 'field-wrap-workerCount', promptEn: "Speak Number of Workers.", promptTe: "కూలీల సంఖ్య చెప్పండి.", promptHi: "मजदूरों की संख्या बोलें।", promptTa: "தொழிலாளர்கள் எண்ணிக்கையை கூறவும்." },
-      { fieldId: 'input-wage', wrapId: 'field-wrap-wage', promptEn: "Speak Daily Wage Rate.", promptTe: "రోజువారీ కూలి రేటు చెప్పండి.", promptHi: "दैनिक मजदूरी दर बोलें।", promptTa: "தினசரி కూలి விகிதத்தை கூறவும்." },
-      { fieldId: 'input-notes', wrapId: 'field-wrap-notes', promptEn: "Speak any additional work details.", promptTe: "ఇతర వివరాలు లేదా రవాణా సౌకర్యం చెప్పండి.", promptHi: "अन्य विवरण बोलें।", promptTa: "கூடுதல் விவரங்களை கூறவும்." }
-    ];
-
-    document.addEventListener("DOMContentLoaded", () => {
-      loadData();
-      initMap();
-      renderData();
-      initSpeechRecognition();
-    });
-
-    function loadData() {
-      const stored = localStorage.getItem("agri_labor_listings_v10");
-      if (stored) {
-        try { listings = JSON.parse(stored); } catch (e) { listings = initialData; }
-      } else {
-        listings = initialData;
-        saveData();
-      }
-    }
-
-    function saveData() {
-      localStorage.setItem("agri_labor_listings_v10", JSON.stringify(listings));
-    }
-
+    // Initialize Map
     function initMap() {
-      map = L.map('map').setView(baseCenter, 11);
+      if (map) return;
+      map = L.map('map').setView([17.3850, 78.4867], 10);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
-
-      updateRadiusCircle(25);
+      markersGroup = L.layerGroup().addTo(map);
     }
 
-    function updateRadiusCircle(radiusKm) {
-      if (currentRadiusCircle) map.removeLayer(currentRadiusCircle);
-      currentRadiusCircle = L.circle(baseCenter, {
-        color: '#16a34a',
-        fillColor: '#22c55e',
-        fillOpacity: 0.1,
-        radius: radiusKm * 1000
-      }).addTo(map);
+    // Switch Language
+    function changeLanguage(lang) {
+      const dict = translations[lang] || translations.en;
+      document.querySelectorAll('[data-i18n]').forEach(elem => {
+        const key = elem.getAttribute('data-i18n');
+        if (dict[key]) elem.innerText = dict[key];
+      });
     }
 
-    function updateRadius(val) {
-      document.getElementById('radius-value').innerText = `${val} km`;
-      updateRadiusCircle(val);
-      renderData();
+    // Listen to Realtime Firebase Updates
+    function initDatabaseSync() {
+      db.ref('listings').on('value', (snapshot) => {
+        const data = snapshot.val();
+        currentListings = [];
+        if (data) {
+          Object.keys(data).forEach((key) => {
+            currentListings.push({ id: key, ...data[key] });
+          });
+        }
+        renderData();
+        updateBadges();
+      }, (err) => {
+        console.error("Firebase fetch error:", err);
+      });
     }
 
+    // Update Tab Badges
+    function updateBadges() {
+      const availCount = currentListings.filter(item => item.postType === 'available').length;
+      const needCount = currentListings.filter(item => item.postType === 'needed').length;
+      document.getElementById('badge-available').innerText = availCount;
+      document.getElementById('badge-needed').innerText = needCount;
+    }
+
+    // Tab Switcher
     function switchTab(tab) {
-      currentTab = tab;
-      const dict = translations[currentLang] || translations['en'];
-      const tabAvail = document.getElementById('tab-available');
-      const tabNeed = document.getElementById('tab-needed');
-      const sectionTitle = document.getElementById('section-title');
+      activeTab = tab;
+      const btnAvail = document.getElementById('tab-available');
+      const btnNeed = document.getElementById('tab-needed');
+      const titleElem = document.getElementById('section-title');
 
       if (tab === 'available') {
-        tabAvail.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-agri-600 text-white shadow-sm";
-        tabNeed.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900";
-        sectionTitle.innerText = dict.titleAvailableListings;
+        btnAvail.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-agri-600 text-white shadow-sm";
+        btnNeed.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900";
+        titleElem.innerText = translations[document.getElementById('langSelect').value]?.titleAvailableListings || "Available Labor Groups Nearby";
       } else {
-        tabNeed.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-amber-500 text-slate-900 shadow-sm";
-        tabAvail.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900";
-        sectionTitle.innerText = dict.titleNeededListings;
+        btnNeed.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 bg-amber-500 text-slate-900 font-bold shadow-sm";
+        btnAvail.className = "flex-1 md:flex-initial px-5 py-2.5 rounded-lg font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 text-slate-600 hover:text-slate-900";
+        titleElem.innerText = translations[document.getElementById('langSelect').value]?.titleNeededListings || "Farmers Looking for Laborers";
       }
       renderData();
     }
 
-    function getGoogleMapsUrl(lat, lng, locationText) {
-      if (lat && lng) {
-        return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    // Radius UI update
+    function updateRadius(val) {
+      document.getElementById('radius-value').innerText = val + ' km';
+      renderData();
+    }
+
+    // Render Data & Map Markers
+    function renderData() {
+      const search = document.getElementById('filter-search').value.toLowerCase();
+      const crop = document.getElementById('filter-crop').value;
+      const sort = document.getElementById('filter-sort').value;
+      const container = document.getElementById('cards-container');
+
+      markersGroup.clearLayers();
+
+      let filtered = currentListings.filter(item => item.postType === activeTab);
+
+      if (crop !== 'ALL') {
+        filtered = filtered.filter(item => item.crop === crop);
       }
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationText)}`;
-    }
 
-    function extractWageValue(str) {
-      if (!str) return 0;
-      const match = str.replace(/,/g, '').match(/\d+/);
-      return match ? parseInt(match[0], 10) : 0;
-    }
+      if (search) {
+        filtered = filtered.filter(item => 
+          item.name.toLowerCase().includes(search) || 
+          item.village.toLowerCase().includes(search) || 
+          item.phone.includes(search)
+        );
+      }
 
-    function getCurrentLocation() {
-      const statusEl = document.getElementById('location-status');
-      const inputLocation = document.getElementById('input-workLocation');
-      const inputLat = document.getElementById('input-lat');
-      const inputLng = document.getElementById('input-lng');
+      if (sort === 'workers-high') filtered.sort((a,b) => b.workerCount - a.workerCount);
+      if (sort === 'workers-low') filtered.sort((a,b) => a.workerCount - b.workerCount);
+      if (sort === 'newest') filtered.sort((a,b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-      if (!navigator.geolocation) {
-        statusEl.innerText = "❌ Geolocation is not supported by your browser.";
-        statusEl.className = "text-[10px] text-rose-600 mt-1 font-bold";
+      document.getElementById('results-count').innerText = `Showing ${filtered.length} entries`;
+      container.innerHTML = '';
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="bg-white p-8 rounded-2xl text-center border border-slate-200 text-slate-500 text-sm">No postings found. Create a post using the button above.</div>`;
         return;
       }
 
-      statusEl.innerText = "⏳ Detecting current location...";
-      statusEl.className = "text-[10px] text-amber-600 mt-1 font-bold animate-pulse";
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-
-          inputLat.value = lat;
-          inputLng.value = lng;
-          inputLocation.value = `Current Field GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-
-          statusEl.innerText = "✅ GPS Location captured successfully!";
-          statusEl.className = "text-[10px] text-emerald-600 mt-1 font-bold";
-        },
-        (error) => {
-          statusEl.innerText = "⚠️ Location permission denied. Enter location manually.";
-          statusEl.className = "text-[10px] text-rose-600 mt-1 font-bold";
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
-
-    function getDistanceKm(lat1, lon1, lat2, lon2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    }
-
-    function renderData() {
-      const dict = translations[currentLang] || translations['en'];
-      const search = document.getElementById('filter-search').value.toLowerCase();
-      const cropFilter = document.getElementById('filter-crop').value;
-      const maxRadius = parseFloat(document.getElementById('filter-radius').value);
-      const sortType = document.getElementById('filter-sort').value;
-
-      document.getElementById('badge-available').innerText = listings.filter(i => i.type === 'available').length;
-      document.getElementById('badge-needed').innerText = listings.filter(i => i.type === 'needed').length;
-
-      let filtered = listings.filter(item => {
-        if (item.type !== currentTab) return false;
-        const matchesSearch = item.ownerName.toLowerCase().includes(search) ||
-                              item.village.toLowerCase().includes(search) ||
-                              item.workLocation.toLowerCase().includes(search) ||
-                              item.phone.includes(search);
-        if (!matchesSearch) return false;
-        if (cropFilter !== 'ALL' && item.crop !== cropFilter) return false;
-
-        const dist = getDistanceKm(baseCenter[0], baseCenter[1], item.lat, item.lng);
-        return dist <= maxRadius;
-      });
-
-      if (sortType === 'workers-high') {
-        filtered.sort((a, b) => b.workerCount - a.workerCount);
-      } else if (sortType === 'workers-low') {
-        filtered.sort((a, b) => a.workerCount - b.workerCount);
-      } else if (sortType === 'rate-low') {
-        filtered.sort((a, b) => extractWageValue(a.wage) - extractWageValue(b.wage));
-      } else if (sortType === 'rate-high') {
-        filtered.sort((a, b) => extractWageValue(b.wage) - extractWageValue(a.wage));
-      }
-
-      const container = document.getElementById('cards-container');
-      document.getElementById('results-count').innerText = `Showing ${filtered.length} entries`;
-
-      if (filtered.length === 0) {
-        container.innerHTML = `
-          <div class="bg-white rounded-2xl p-8 text-center border border-dashed border-slate-300">
-            <i class="fa-solid fa-folder-open text-4xl text-slate-300 mb-2"></i>
-            <p class="font-bold text-slate-600">${dict.noResults}</p>
-          </div>`;
-      } else {
-        container.innerHTML = filtered.map(item => createCardHTML(item, dict)).join('');
-      }
-
-      clearMapMarkers();
       filtered.forEach(item => {
-        const markerColor = item.type === 'available' ? '#16a34a' : '#d97706';
-        const mapsUrl = getGoogleMapsUrl(item.lat, item.lng, `${item.village}, ${item.workLocation}`);
-        
-        const marker = L.circleMarker([item.lat, item.lng], {
-          radius: 8,
-          fillColor: markerColor,
-          color: '#ffffff',
-          weight: 2,
-          fillOpacity: 0.9
-        }).addTo(map);
+        // Add Marker to Map
+        if (item.lat && item.lng) {
+          const marker = L.marker([item.lat, item.lng]).addTo(markersGroup);
+          marker.bindPopup(`<b>${item.name}</b><br>${item.village}<br>Workers: ${item.workerCount}<br><a href="tel:${item.phone}">📞 ${item.phone}</a>`);
+        }
 
-        marker.bindPopup(`
-          <div class="p-1">
-            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white ${item.type === 'available' ? 'bg-green-600' : 'bg-amber-600'}">
-              ${item.type === 'available' ? dict.cardAvailableBadge : dict.cardNeededBadge}
-            </span>
-            <p class="font-bold text-sm text-slate-900 mt-1">${item.ownerName}</p>
-            <p class="text-xs text-slate-600"><i class="fa-solid fa-house"></i> ${dict.cardOwnerVillage}: ${item.village}</p>
-            <p class="text-xs text-slate-600"><i class="fa-solid fa-location-dot text-rose-500"></i> ${dict.cardWorkLoc}: ${item.workLocation}</p>
-            <div class="mt-2 space-y-1">
-              <a href="tel:${item.phone}" class="phone-single-line block text-center bg-green-600 text-white font-bold py-1 px-2 rounded text-xs">
-                📞 ${dict.cardCall} ${item.phone}
-              </a>
-              <a href="${mapsUrl}" target="_blank" class="block text-center bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs">
-                🗺️ ${dict.cardOpenMaps}
-              </a>
-            </div>
-          </div>
-        `);
-        mapMarkers.push(marker);
-      });
-    }
-
-    function clearMapMarkers() {
-      mapMarkers.forEach(m => map.removeLayer(m));
-      mapMarkers = [];
-    }
-
-    function createCardHTML(item, dict) {
-      const isAvail = item.type === 'available';
-      const mapsUrl = getGoogleMapsUrl(item.lat, item.lng, `${item.village}, ${item.workLocation}`);
-
-      return `
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition space-y-3">
+        // Render Listing Card
+        const card = document.createElement('div');
+        card.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-3";
+        card.innerHTML = `
           <div class="flex justify-between items-start gap-2">
             <div>
-              <span class="text-[11px] font-bold px-2.5 py-1 rounded-full border ${isAvail ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'} inline-block mb-1">
-                ${isAvail ? dict.cardAvailableBadge : dict.cardNeededBadge}
+              <span class="inline-block text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${item.postType === 'available' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'} mb-1">
+                ${item.postType === 'available' ? '👥 Worker Group Available' : '🌾 Farmer Requires Workers'}
               </span>
-              <h4 class="font-black text-slate-900 text-base flex items-center gap-2">
-                ${item.ownerName}
-                <span class="text-xs font-normal text-slate-500">(${item.date})</span>
-              </h4>
+              <h4 class="font-extrabold text-slate-900 text-base">${item.name}</h4>
+              <p class="text-xs text-slate-500"><i class="fa-solid fa-location-dot text-rose-500 mr-1"></i>${item.village} - ${item.workLocation}</p>
             </div>
             <div class="text-right">
-              <span class="text-xs text-slate-400 block">${dict.cardOfferedWage}</span>
-              <span class="font-black text-agri-700 text-base">${item.wage}</span>
+              <span class="text-xs font-bold text-slate-400 block">Workers</span>
+              <span class="text-lg font-black text-agri-700">${item.workerCount}</span>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl text-xs border border-slate-100">
-            <div>
-              <span class="text-slate-400 block text-[10px] uppercase font-bold">${dict.cardOwnerVillage}</span>
-              <span class="font-bold text-slate-800"><i class="fa-solid fa-house-chimney text-agri-600 mr-1"></i> ${item.village}</span>
-            </div>
-            
-            <div>
-              <span class="text-slate-400 block text-[10px] uppercase font-bold">${dict.cardWorkLoc}</span>
-              <a href="${mapsUrl}" target="_blank" class="font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1">
-                <i class="fa-solid fa-map-location-dot text-rose-500"></i> ${item.workLocation}
+          <div class="grid grid-cols-2 gap-2 text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <div><span class="text-slate-400 block text-[10px] font-bold">Crop / Work</span><span class="font-bold text-slate-700">${item.crop}</span></div>
+            <div><span class="text-slate-400 block text-[10px] font-bold">Wage Rate</span><span class="font-bold text-slate-700">${item.wage}</span></div>
+          </div>
+
+          ${item.notes ? `<p class="text-xs text-slate-600 italic bg-amber-50/50 p-2 rounded-lg">"${item.notes}"</p>` : ''}
+
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+            <div class="flex gap-2">
+              <a href="tel:${item.phone}" class="bg-agri-600 hover:bg-agri-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                <i class="fa-solid fa-phone"></i> Call
+              </a>
+              <a href="https://wa.me/91${item.phone}" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
+                <i class="fa-brands fa-whatsapp"></i> WhatsApp
               </a>
             </div>
-
-            <div>
-              <span class="text-slate-400 block text-[10px] uppercase font-bold">${dict.cardWorkers}</span>
-              <span class="font-black text-agri-800"><i class="fa-solid fa-user-group text-blue-500 mr-1"></i> ${item.workerCount}</span>
+            <div class="flex gap-2">
+              <button onclick="editListing('${item.id}')" class="text-xs text-slate-500 hover:text-slate-800 font-bold px-2 py-1">
+                <i class="fa-solid fa-pen"></i> Edit
+              </button>
+              <button onclick="deleteListing('${item.id}')" class="text-xs text-rose-600 hover:text-rose-800 font-bold px-2 py-1">
+                <i class="fa-solid fa-trash"></i> Delete / Done
+              </button>
             </div>
           </div>
-
-          <div class="flex items-center justify-between gap-2 pt-1">
-            <span class="bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-lg text-xs">
-              🌾 ${item.crop}
-            </span>
-            <p class="text-xs text-slate-500 flex-1 truncate px-1">${item.notes}</p>
-          </div>
-
-          <!-- PRIMARY COMMUNICATION ACTIONS: responsive, no clipped phone number -->
-          <div class="communication-actions grid grid-cols-1 sm:grid-cols-3 gap-2 pt-3 border-t border-slate-100">
-            <a href="tel:${item.phone}" class="phone-button phone-single-line bg-agri-600 hover:bg-agri-700 text-white font-bold py-3 px-4 rounded-xl text-sm text-center transition flex items-center justify-center gap-2">
-              <i class="fa-solid fa-phone"></i><span>${item.phone}</span>
-            </a>
-            <a href="https://wa.me/91${item.phone}" target="_blank" rel="noopener noreferrer" class="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 whitespace-nowrap">
-              <i class="fa-brands fa-whatsapp text-emerald-600"></i> ${dict.cardWhatsapp}
-            </a>
-            <a href="${mapsUrl}" target="_blank" rel="noopener noreferrer" class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 whitespace-nowrap">
-              <i class="fa-solid fa-directions text-blue-600"></i> ${dict.cardOpenMaps}
-            </a>
-          </div>
-
-          <!-- EDIT & DELETE WORK DONE CONTROLS -->
-          <div class="flex justify-end items-center gap-2 pt-2 border-t border-dashed border-slate-200">
-            <button onclick="editListing('${item.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1">
-              <i class="fa-solid fa-pen-to-square text-blue-600"></i> ${dict.cardEdit}
-            </button>
-            <button onclick="deleteListing('${item.id}')" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1">
-              <i class="fa-solid fa-trash text-rose-600"></i> ${dict.cardDelete}
-            </button>
-          </div>
-        </div>
-      `;
+        `;
+        container.appendChild(card);
+      });
     }
 
-    // EDIT AND DELETE POST FUNCTIONS
+    // GPS Location Fetch
+    function getCurrentLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          document.getElementById('input-lat').value = pos.coords.latitude;
+          document.getElementById('input-lng').value = pos.coords.longitude;
+          document.getElementById('input-workLocation').value = `GPS Detected (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`;
+        }, () => {
+          alert("Unable to fetch GPS position.");
+        });
+      }
+    }
+
+    // Modal Control
+    function openPostModal(defaultType = 'available') {
+      document.getElementById('postForm').reset();
+      document.getElementById('input-edit-id').value = '';
+      document.getElementById('btn-submit-text').innerText = 'Publish Listing Now';
+      const radios = document.getElementsByName('postType');
+      for (let r of radios) { if (r.value === defaultType) r.checked = true; }
+      document.getElementById('postModal').classList.remove('hidden');
+    }
+
+    function closePostModal() {
+      document.getElementById('postModal').classList.add('hidden');
+    }
+
+    // Form Submission to Cloud
+    function handleFormSubmit(event) {
+      event.preventDefault();
+      const editId = document.getElementById('input-edit-id').value;
+      const selectedType = document.querySelector('input[name="postType"]:checked').value;
+
+      const payload = {
+        postType: selectedType,
+        name: document.getElementById('input-name').value.trim(),
+        phone: document.getElementById('input-phone').value.trim(),
+        village: document.getElementById('input-village').value.trim(),
+        workLocation: document.getElementById('input-workLocation').value.trim(),
+        lat: parseFloat(document.getElementById('input-lat').value) || 17.3850,
+        lng: parseFloat(document.getElementById('input-lng').value) || 78.4867,
+        workerCount: parseInt(document.getElementById('input-workerCount').value) || 1,
+        wage: document.getElementById('input-wage').value.trim(),
+        crop: document.getElementById('input-crop').value,
+        notes: document.getElementById('input-notes').value.trim(),
+        timestamp: Date.now()
+      };
+
+      if (editId) {
+        db.ref('listings/' + editId).update(payload).then(() => {
+          closePostModal();
+        });
+      } else {
+        db.ref('listings').push(payload).then(() => {
+          closePostModal();
+        });
+      }
+    }
+
+    // Edit Listing
     function editListing(id) {
-      const item = listings.find(l => l.id === id);
+      const item = currentListings.find(x => x.id === id);
       if (!item) return;
 
-      const dict = translations[currentLang] || translations['en'];
-
-      // Fill modal form fields with existing data
       document.getElementById('input-edit-id').value = item.id;
-      document.getElementById('input-name').value = item.ownerName;
+      document.getElementById('input-name').value = item.name;
       document.getElementById('input-phone').value = item.phone;
       document.getElementById('input-village').value = item.village;
       document.getElementById('input-workLocation').value = item.workLocation;
       document.getElementById('input-workerCount').value = item.workerCount;
       document.getElementById('input-wage').value = item.wage;
       document.getElementById('input-crop').value = item.crop;
-      document.getElementById('input-notes').value = item.notes;
+      document.getElementById('input-notes').value = item.notes || '';
       document.getElementById('input-lat').value = item.lat;
       document.getElementById('input-lng').value = item.lng;
 
-      const radio = document.querySelector(`input[name="postType"][value="${item.type}"]`);
-      if (radio) radio.checked = true;
+      const radios = document.getElementsByName('postType');
+      for (let r of radios) { if (r.value === item.postType) r.checked = true; }
 
-      toggleFormFields(item.type);
-
-      // Update modal titles
-      document.getElementById('modal-title').innerText = dict.modalTitleEdit;
-      document.getElementById('btn-submit-text').innerText = dict.btnUpdateSubmit;
-
+      document.getElementById('btn-submit-text').innerText = 'Save Changes';
       document.getElementById('postModal').classList.remove('hidden');
     }
 
+    // Delete Listing
     function deleteListing(id) {
-      if (confirm("Are you sure you want to delete this listing? (Mark work as completed/removed)")) {
-        listings = listings.filter(l => l.id !== id);
-        saveData();
-        renderData();
-        alert("✅ Listing has been removed successfully.");
+      if (confirm("Mark this post as completed/delete from cloud?")) {
+        db.ref('listings/' + id).remove();
       }
     }
 
-    // WEB SPEECH RECOGNITION (ONLY ACTIVATED WHEN USER CLICKS MIC BUTTON)
-    function initSpeechRecognition() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        console.warn("Web Speech API not supported in this browser.");
-        return;
-      }
-      recognition = new SpeechRecognition();
-      recognition.continuous = true;
-      recognition.interimResults = false;
-
-      recognition.onresult = (event) => {
-        const lastResultIndex = event.results.length - 1;
-        const spokenText = event.results[lastResultIndex][0].transcript.trim();
-
-        if (spokenText && isContinuousListening && currentVoiceStepIndex < voiceSteps.length) {
-          const currentStep = voiceSteps[currentVoiceStepIndex];
-          const inputEl = document.getElementById(currentStep.fieldId);
-
-          if (currentStep.fieldId === 'input-phone') {
-            const cleanDigits = spokenText.replace(/\D/g, '');
-            inputEl.value = cleanDigits.slice(0, 10) || spokenText;
-          } else if (currentStep.fieldId === 'input-workerCount') {
-            const numMatch = spokenText.match(/\d+/);
-            inputEl.value = numMatch ? numMatch[0] : spokenText;
-          } else {
-            inputEl.value = spokenText;
-          }
-
-          // AUTO ADVANCE TO NEXT FIELD
-          currentVoiceStepIndex++;
-          promptNextVoiceStep();
-        }
-      };
-
-      recognition.onerror = (event) => {
-        if (isContinuousListening && event.error !== 'aborted') {
-          try { recognition.start(); } catch(e) {}
-        }
-      };
-
-      recognition.onend = () => {
-        if (isContinuousListening) {
-          try { recognition.start(); } catch(e) {}
-        }
-      };
-    }
-
-    function getSpeechLangCode(lang) {
-      switch(lang) {
-        case 'te': return 'te-IN';
-        case 'hi': return 'hi-IN';
-        case 'ta': return 'ta-TN';
-        default: return 'en-US';
-      }
-    }
-
-    function speakPrompt(text) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = getSpeechLangCode(currentLang);
-        window.speechSynthesis.speak(utterance);
-      }
-    }
-
-    function toggleContinuousVoice() {
-      if (!recognition) {
-        alert("⚠️ Voice Assistant is not supported in this browser. Please use Chrome or Edge.");
-        return;
-      }
-
-      const statusTitle = document.getElementById('voiceStatusTitle');
-      const micBtn = document.getElementById('modalMicBtn');
-
-      if (isContinuousListening) {
-        stopContinuousVoice();
-        return;
-      }
-
-      isContinuousListening = true;
-      currentVoiceStepIndex = 0;
-      recognition.lang = getSpeechLangCode(currentLang);
-
-      try {
-        recognition.start();
-      } catch(e) {}
-
-      micBtn.classList.add('listening-active');
-      statusTitle.innerText = "🔴 Voice Assistant Listening...";
-      
-      promptNextVoiceStep();
-    }
-
-    function promptNextVoiceStep() {
-      const statusText = document.getElementById('voiceStatusText');
-
-      voiceSteps.forEach(s => {
-        const wrap = document.getElementById(s.wrapId);
-        if (wrap) wrap.classList.remove('active-voice-highlight');
-      });
-
-      if (currentVoiceStepIndex < voiceSteps.length) {
-        const step = voiceSteps[currentVoiceStepIndex];
-        const wrap = document.getElementById(step.wrapId);
-        if (wrap) wrap.classList.add('active-voice-highlight');
-
-        let promptMsg = step.promptEn;
-        if (currentLang === 'te') promptMsg = step.promptTe;
-        if (currentLang === 'hi') promptMsg = step.promptHi;
-        if (currentLang === 'ta') promptMsg = step.promptTa;
-
-        statusText.innerText = `Step ${currentVoiceStepIndex + 1}/${voiceSteps.length}: ${promptMsg}`;
-        speakPrompt(promptMsg);
-      } else {
-        statusText.innerText = "🎉 All fields filled! Voice Assistant finished.";
-        speakPrompt("All fields captured. Click publish to post.");
-        stopContinuousVoice();
-      }
-    }
-
-    function skipToNextVoiceField() {
-      if (!isContinuousListening) {
-        toggleContinuousVoice();
-        return;
-      }
-      currentVoiceStepIndex++;
-      promptNextVoiceStep();
-    }
-
-    function stopContinuousVoice() {
-      isContinuousListening = false;
-      if (recognition) {
-        try { recognition.stop(); } catch(e) {}
-      }
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      const micBtn = document.getElementById('modalMicBtn');
-      if (micBtn) micBtn.classList.remove('listening-active');
-
-      document.getElementById('voiceStatusTitle').innerText = "🎙️ Voice Assistant (Optional)";
-      document.getElementById('voiceStatusText').innerText = "Click mic to start voice guided filling only if needed.";
-
-      voiceSteps.forEach(s => {
-        const wrap = document.getElementById(s.wrapId);
-        if (wrap) wrap.classList.remove('active-voice-highlight');
-      });
-    }
-
-    function openPostModal(defaultType = 'available') {
-      const dict = translations[currentLang] || translations['en'];
-      
-      // Reset form & ID for fresh post creation
-      document.getElementById('input-edit-id').value = "";
-      document.getElementById('postForm').reset();
-      document.getElementById('modal-title').innerText = dict.modalTitle;
-      document.getElementById('btn-submit-text').innerText = dict.btnSubmit;
-
-      document.getElementById('postModal').classList.remove('hidden');
-      const radio = document.querySelector(`input[name="postType"][value="${defaultType}"]`);
-      if(radio) { radio.checked = true; toggleFormFields(defaultType); }
-    }
-
-    function closePostModal() {
-      stopContinuousVoice();
-      document.getElementById('postModal').classList.add('hidden');
-    }
-
-    function toggleFormFields(type) {
-      const dict = translations[currentLang] || translations['en'];
-      document.getElementById('lbl-name').innerText = type === 'available' ? dict.lblNameGroup : dict.lblNameFarmer;
-      document.getElementById('lbl-village').innerText = type === 'available' ? dict.lblVillageGroup : dict.lblVillageFarmer;
-      document.getElementById('lbl-workLocation').innerText = type === 'available' ? dict.lblWorkLocGroup : dict.lblWorkLocFarmer;
-      document.getElementById('lbl-workerCount').innerText = type === 'available' ? dict.lblWorkersGroup : dict.lblWorkersFarmer;
-      document.getElementById('lbl-wage').innerText = type === 'available' ? dict.lblWageGroup : dict.lblWageFarmer;
-    }
-
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      stopContinuousVoice();
-
-      const editId = document.getElementById('input-edit-id').value;
-      const postType = document.querySelector('input[name="postType"]:checked').value;
-      const latVal = parseFloat(document.getElementById('input-lat').value);
-      const lngVal = parseFloat(document.getElementById('input-lng').value);
-
-      const lat = !isNaN(latVal) ? latVal : baseCenter[0] + (Math.random() - 0.5) * 0.05;
-      const lng = !isNaN(lngVal) ? lngVal : baseCenter[1] + (Math.random() - 0.5) * 0.05;
-
-      if (editId) {
-        // UPDATE EXISTING LISTING
-        const index = listings.findIndex(l => l.id === editId);
-        if (index !== -1) {
-          listings[index] = {
-            ...listings[index],
-            type: postType,
-            ownerName: document.getElementById('input-name').value,
-            phone: document.getElementById('input-phone').value,
-            village: document.getElementById('input-village').value,
-            workLocation: document.getElementById('input-workLocation').value,
-            workerCount: parseInt(document.getElementById('input-workerCount').value),
-            crop: document.getElementById('input-crop').value,
-            wage: document.getElementById('input-wage').value,
-            notes: document.getElementById('input-notes').value || "No additional notes provided.",
-            lat: lat,
-            lng: lng,
-            date: "Updated Just Now"
-          };
-          alert("✅ Listing updated successfully!");
-        }
-      } else {
-        // CREATE NEW LISTING
-        const newEntry = {
-          id: "usr-" + Date.now(),
-          type: postType,
-          ownerName: document.getElementById('input-name').value,
-          phone: document.getElementById('input-phone').value,
-          village: document.getElementById('input-village').value,
-          workLocation: document.getElementById('input-workLocation').value,
-          workerCount: parseInt(document.getElementById('input-workerCount').value),
-          crop: document.getElementById('input-crop').value,
-          wage: document.getElementById('input-wage').value,
-          notes: document.getElementById('input-notes').value || "No additional notes provided.",
-          lat: lat,
-          lng: lng,
-          date: "Just Now"
-        };
-        listings.unshift(newEntry);
-        alert("✅ Your posting with live work location has been published!");
-      }
-
-      saveData();
-      closePostModal();
-      document.getElementById('postForm').reset();
-      switchTab(postType);
-    }
+    // Start App on DOM Ready
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initDatabaseSync();
+    });
   </script>
 </body>
 </html>

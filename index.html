@@ -18,7 +18,7 @@
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- FIREBASE CLOUD SDKs (Compatibility Mode for Browser) -->
+  <!-- FIREBASE CLOUD SDKs (Compatibility Mode for Browser Sync) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
@@ -46,6 +46,7 @@
   </script>
 
   <style>
+
     /* ===== SINGLE-PAGE / NO HORIZONTAL SCROLL FIX ===== */
     html, body {
       width: 100%;
@@ -84,6 +85,10 @@
       min-width: 0;
     }
 
+    .overflow-x-auto {
+      overflow-x: hidden !important;
+    }
+
     #cards-container {
       width: 100%;
       min-width: 0;
@@ -97,14 +102,55 @@
     }
 
     #map {
-      height: 380px;
-      width: 100%;
-      z-index: 10;
-      border-radius: 1rem;
       max-width: 100%;
       min-width: 0;
     }
 
+    /* Keep the desktop header inside the viewport even when text is long. */
+    header .max-w-7xl {
+      min-width: 0;
+    }
+
+    header .max-w-7xl > div {
+      min-width: 0;
+    }
+
+    header .max-w-7xl > div:last-child {
+      min-width: 0;
+      flex-shrink: 1;
+    }
+
+    header h1,
+    header p,
+    header button,
+    header select {
+      min-width: 0;
+    }
+
+    /* On narrower desktop/tablet widths, allow header controls to wrap
+       instead of creating a wider-than-screen page. */
+    @media (max-width: 1100px) {
+      header .max-w-7xl {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      header .max-w-7xl > div:last-child {
+        margin-left: auto;
+      }
+    }
+
+    @media (max-width: 640px) {
+      header .max-w-7xl {
+        align-items: stretch;
+      }
+
+      header .max-w-7xl > div:last-child {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+    #map { height: 380px; width: 100%; z-index: 10; border-radius: 1rem; }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #16a34a; border-radius: 10px; }
@@ -118,6 +164,44 @@
       animation: mic-pulse 1.2s infinite;
       background-color: #dc2626 !important;
       color: white !important;
+    }
+    .active-voice-highlight {
+      border: 2px solid #e11d48 !important;
+      background-color: #fff1f2 !important;
+    }
+
+    /* Keep phone numbers on a single line */
+    #input-phone {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: clip;
+      min-width: 0;
+      letter-spacing: 0.02em;
+    }
+    .phone-single-line {
+      white-space: nowrap !important;
+      overflow: visible !important;
+      text-overflow: clip !important;
+      min-width: 0;
+    }
+    .phone-button span {
+      white-space: nowrap !important;
+      display: inline-block;
+    }
+    @media (max-width: 640px) {
+      .communication-actions {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+      }
+      .communication-actions > a {
+        width: 100%;
+        min-width: 0;
+        min-height: 52px;
+        box-sizing: border-box;
+      }
+      .communication-actions .phone-button {
+        font-size: 15px !important;
+      }
     }
   </style>
 </head>
@@ -219,7 +303,7 @@
           <label class="block text-xs font-semibold text-slate-500 mb-1" data-i18n="filterSearchLabel">Search Village / Name / Phone</label>
           <div class="relative">
             <i class="fa-solid fa-search absolute left-3 top-3 text-slate-400 text-xs"></i>
-            <input type="text" id="filter-search" oninput="renderData()" placeholder="e.g. Rampur, Paddy, Kumar..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+            <input type="text" id="filter-search" oninput="renderData()" data-i18n-ph="filterSearchPH" placeholder="e.g. Rampur, Paddy, Kumar..." class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
         </div>
 
@@ -253,6 +337,8 @@
             <option value="newest" data-i18n="sortNewest">Most Recent Postings</option>
             <option value="workers-high" data-i18n="sortWorkersHigh">Worker Count (High to Low)</option>
             <option value="workers-low" data-i18n="sortWorkersLow">Worker Count (Low to High)</option>
+            <option value="rate-low" data-i18n="sortRateLow">Daily Wage Rate (Low to High)</option>
+            <option value="rate-high" data-i18n="sortRateHigh">Daily Wage Rate (High to Low)</option>
           </select>
         </div>
 
@@ -284,7 +370,7 @@
 
         <!-- Cards Container -->
         <div id="cards-container" class="space-y-4 custom-scrollbar max-h-[700px] overflow-y-auto pr-1">
-          <!-- Live JS Injected Cards -->
+          <!-- Dynamic JS Injection -->
         </div>
       </div>
 
@@ -300,11 +386,31 @@
       <div class="bg-agri-800 text-white px-6 py-4 flex justify-between items-center">
         <div>
           <h3 class="font-bold text-lg" id="modal-title" data-i18n="modalTitle">Create New Listing</h3>
-          <p class="text-xs text-agri-200" id="modal-sub" data-i18n="modalSub">Type manually or submit listing details</p>
+          <p class="text-xs text-agri-200" id="modal-sub" data-i18n="modalSub">Type manually or click the mic button below for voice fill</p>
         </div>
         <button onclick="closePostModal()" class="w-8 h-8 rounded-full bg-agri-900/50 hover:bg-agri-900 text-white flex items-center justify-center transition">
           <i class="fa-solid fa-xmark"></i>
         </button>
+      </div>
+
+      <!-- OPTIONAL VOICE ASSISTANT PROMPT BAR -->
+      <div class="bg-slate-100 border-b border-slate-200 px-6 py-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div class="flex items-center gap-3">
+          <button type="button" id="modalMicBtn" onclick="toggleContinuousVoice()" class="w-10 h-10 rounded-full bg-rose-600 hover:bg-rose-700 text-white flex items-center justify-center shadow-md transition flex-shrink-0">
+            <i class="fa-solid fa-microphone text-base"></i>
+          </button>
+          <div>
+            <p class="text-xs font-bold text-slate-800" id="voiceStatusTitle" data-i18n="voiceBarTitle">🎙️ Voice Assistant (Optional)</p>
+            <p class="text-[11px] text-slate-600 font-medium" id="voiceStatusText" data-i18n="voiceBarSub">Click mic to start voice guided filling only if needed.</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 self-end sm:self-auto">
+          <button type="button" onclick="skipToNextVoiceField()" class="bg-white text-slate-700 border border-slate-300 font-bold px-2.5 py-1 rounded-lg text-xs hover:bg-slate-50 transition flex items-center gap-1">
+            <i class="fa-solid fa-forward text-[10px]"></i> Skip / Next Field
+          </button>
+          <span id="voiceLangBadge" class="text-[10px] font-bold px-2 py-1 rounded bg-slate-200 text-slate-800 uppercase">EN</span>
+        </div>
       </div>
 
       <!-- Modal Body (Form) -->
@@ -318,14 +424,14 @@
           <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2" data-i18n="lblPostType">I am posting as:</label>
           <div class="grid grid-cols-2 gap-3">
             <label class="border-2 border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50 has-[:checked]:border-agri-600 has-[:checked]:bg-agri-50 transition">
-              <input type="radio" name="postType" value="available" checked class="accent-agri-600">
+              <input type="radio" name="postType" value="available" checked onchange="toggleFormFields('available')" class="accent-agri-600">
               <div>
                 <p class="text-xs font-bold text-slate-800" data-i18n="optGroupLeader">Labor Contractor / Group Leader</p>
                 <p class="text-[10px] text-slate-500" data-i18n="optGroupSub">I have available workers</p>
               </div>
             </label>
             <label class="border-2 border-slate-200 rounded-xl p-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-50 transition">
-              <input type="radio" name="postType" value="needed" class="accent-amber-500">
+              <input type="radio" name="postType" value="needed" onchange="toggleFormFields('needed')" class="accent-amber-500">
               <div>
                 <p class="text-xs font-bold text-slate-800" data-i18n="optFarmer">Farmer / Land Owner</p>
                 <p class="text-[10px] text-slate-500" data-i18n="optFarmerSub">I need workers for my field</p>
@@ -338,70 +444,71 @@
 
         <!-- Name & Phone -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNameGroup">Name *</label>
-            <input type="text" id="input-name" required placeholder="e.g. Ramesh Kumar" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div id="field-wrap-name" class="p-2 rounded-2xl transition">
+            <label id="lbl-name" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNameGroup">Group Leader / Owner Name *</label>
+            <input type="text" id="input-name" required data-i18n-ph="phName" placeholder="e.g. Ramesh Kumar" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
-          <div>
+          <div id="field-wrap-phone" class="p-2 rounded-2xl transition">
             <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblPhone">Phone Number *</label>
-            <input type="tel" id="input-phone" required maxlength="10" placeholder="10-digit mobile number" pattern="[0-9]{10}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+            <input type="tel" id="input-phone" required maxlength="10" inputmode="numeric" data-i18n-ph="phPhone" placeholder="10-digit mobile number" pattern="[0-9]{10}" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
         </div>
 
         <!-- Village & Location Details -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblVillageGroup">Village Name *</label>
-            <input type="text" id="input-village" required placeholder="e.g. Medak, Village X" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div id="field-wrap-village" class="p-2 rounded-2xl transition">
+            <label id="lbl-village" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblVillageGroup">Owner / Group Village Name *</label>
+            <input type="text" id="input-village" required data-i18n-ph="phVillage" placeholder="e.g. Medak, Village X" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
 
-          <div>
+          <div id="field-wrap-workLocation" class="p-2 rounded-2xl transition">
             <div class="flex justify-between items-center mb-1">
-              <label class="text-xs font-bold text-slate-700" data-i18n="lblWorkLocGroup">Work Location *</label>
+              <label id="lbl-workLocation" class="text-xs font-bold text-slate-700" data-i18n="lblWorkLocGroup">Work Current Location *</label>
               <button type="button" onclick="getCurrentLocation()" class="text-[11px] text-agri-700 font-bold hover:underline flex items-center gap-1">
-                <i class="fa-solid fa-crosshairs text-rose-500"></i> Get Live Location
+                <i class="fa-solid fa-crosshairs text-rose-500"></i> <span data-i18n="btnGps">Get My Live Location</span>
               </button>
             </div>
             <div class="relative">
-              <input type="text" id="input-workLocation" required placeholder="e.g. Near Water Tank, Field 4" class="w-full px-3 py-2 pr-8 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+              <input type="text" id="input-workLocation" required data-i18n-ph="phWorkLoc" placeholder="e.g. Near Water Tank, Field 4" class="w-full px-3 py-2 pr-8 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
               <i class="fa-solid fa-location-dot absolute right-3 top-2.5 text-rose-500 text-xs"></i>
             </div>
+            <p id="location-status" class="text-[10px] text-slate-500 mt-1" data-i18n="gpsPrompt">Click "Get My Live Location" to detect automatically.</p>
           </div>
         </div>
 
         <!-- Hidden Coordinates -->
-        <input type="hidden" id="input-lat" value="17.3850">
-        <input type="hidden" id="input-lng" value="78.4867">
+        <input type="hidden" id="input-lat" value="">
+        <input type="hidden" id="input-lng" value="">
 
-        <!-- Worker Count & Wages -->
+        <!-- Worker Count & Expected Wages -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWorkersGroup">Number of Workers *</label>
-            <input type="number" id="input-workerCount" min="1" max="200" required placeholder="e.g. 15" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div id="field-wrap-workerCount" class="p-2 rounded-2xl transition">
+            <label id="lbl-workerCount" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWorkersGroup">Number of Workers *</label>
+            <input type="number" id="input-workerCount" min="1" max="200" required data-i18n-ph="phWorkers" placeholder="e.g. 15" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWageGroup">Daily Rate (₹) / Acre Rate *</label>
-            <input type="text" id="input-wage" required placeholder="e.g. ₹550 / day" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
+          <div id="field-wrap-wage" class="p-2 rounded-2xl transition">
+            <label id="lbl-wage" class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblWageGroup">Daily Rate per Worker (₹) / Acre Rate *</label>
+            <input type="text" id="input-wage" required data-i18n-ph="phWage" placeholder="e.g. ₹550 / day or ₹4000/acre" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
           </div>
         </div>
 
-        <!-- Crop & Activity -->
+        <!-- Crop & Activity Specialization -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblCropType">Primary Crop / Work Type *</label>
           <select id="input-crop" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none">
-            <option value="Paddy">🌾 Paddy Cultivation (Transplanting, Cutting, Threshing)</option>
-            <option value="Tomato">🍅 Tomato & Vegetable Harvesting / Packing</option>
-            <option value="Maize">🌽 Maize Harvesting & Cob Shelling</option>
-            <option value="Cotton">☁️ Cotton Picking & Field Clearing</option>
-            <option value="Spraying">🧪 Pesticide / Fertilizer Spraying</option>
-            <option value="Tractor">🚜 Tractor Driving & Land Preparation</option>
+            <option value="Paddy" data-i18n="optPaddy">🌾 Paddy Cultivation (Transplanting, Cutting, Threshing)</option>
+            <option value="Tomato" data-i18n="optTomato">🍅 Tomato & Vegetable Harvesting / Packing</option>
+            <option value="Maize" data-i18n="optMaize">🌽 Maize Harvesting & Cob Shelling</option>
+            <option value="Cotton" data-i18n="optCotton">☁️ Cotton Picking & Field Clearing</option>
+            <option value="Spraying" data-i18n="optSpraying">🧪 Pesticide / Fertilizer Spraying</option>
+            <option value="Tractor" data-i18n="optTractor">🚜 Tractor Driving & Land Preparation</option>
           </select>
         </div>
 
         <!-- Additional Notes -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNotes">Additional Work Details</label>
-          <textarea id="input-notes" rows="2" placeholder="e.g. Food provided, transport available..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none"></textarea>
+        <div id="field-wrap-notes" class="p-2 rounded-2xl transition">
+          <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="lblNotes">Additional Work Details / Transport Needs</label>
+          <textarea id="input-notes" rows="2" data-i18n-ph="phNotes" placeholder="e.g. Food provided, transport available, start work early morning..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-agri-500 focus:outline-none"></textarea>
         </div>
 
         <!-- Submit Button -->
@@ -421,11 +528,10 @@
     </div>
   </footer>
 
-  <!-- SCRIPT & DATABASE INTEGRATION -->
+  <!-- MULTI-LANGUAGE TRANSLATION DICTIONARIES & SCRIPT -->
   <script>
     // ========================================================
-    // 1. FIREBASE REALTIME DATABASE CONFIGURATION
-    // Replace credentials below with your Firebase Project details:
+    // FIREBASE REALTIME DATABASE CONFIGURATION
     // ========================================================
     const firebaseConfig = {
       apiKey: "YOUR_FIREBASE_API_KEY",
@@ -437,77 +543,156 @@
       appId: "YOUR_APP_ID"
     };
 
-    // Initialize Firebase
+    // Initialize Firebase if not already initialized
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.database();
 
     // Application state
-    let activeTab = 'available'; // 'available' or 'needed'
+    let activeTab = 'available';
     let currentListings = [];
     let map = null;
     let markersGroup = null;
 
-    // Translation Dictionaries
     const translations = {
       en: {
         appSubtitle: "Direct Farm Workforce & Voice Assistant Matcher",
         postBtn: "Post Availability / Need",
         badgeTitle: "🌾 Smart Agricultural Network & Flexible Form Posting",
         heroTitle: "Connect Farmers & Farm Workers Nearby",
-        heroDesc: "Fill details by typing directly into the form. Edit mistakes anytime or delete posts once work is completed.",
+        heroDesc: "Fill details by typing directly into the form or optionally enable the voice assistant. You can edit mistakes anytime or delete posts once work is completed.",
         tabAvailable: "Available Workers Groups",
         tabNeeded: "Farmers Need Workers",
         quickPostGroup: "Post Available Group",
         quickPostNeed: "Post Labor Required",
         filterSearchLabel: "Search Village / Name / Phone",
+        filterSearchPH: "e.g. Rampur, Paddy, Kumar...",
         filterCropLabel: "Crop / Work Category",
         optAllCrops: "All Crop Types",
+        optPaddy: "🌾 Paddy Cultivation (Transplanting/Cutting)",
+        optTomato: "🍅 Tomato & Vegetable Picking",
+        optMaize: "🌽 Maize Harvesting",
+        optCotton: "☁️ Cotton Picking",
+        optSpraying: "🧪 Pesticide Spraying",
+        optTractor: "🚜 Tractor & Heavy Operation",
         filterRadiusLabel: "Distance Radius",
         filterSortLabel: "Sort Results By",
         sortNewest: "Most Recent Postings",
         sortWorkersHigh: "Worker Count (High to Low)",
         sortWorkersLow: "Worker Count (Low to High)",
+        sortRateLow: "Daily Wage Rate (Low to High)",
+        sortRateHigh: "Daily Wage Rate (High to Low)",
         mapHeader: "Live Radar & Map Locations",
         mapSub: "Click marker to contact or navigate",
         titleAvailableListings: "Available Labor Groups Nearby",
         titleNeededListings: "Farmers Looking for Laborers",
         modalTitle: "Create New Listing",
         modalTitleEdit: "Update / Correct Listing Details",
+        modalSub: "Type manually or click the mic button below for voice fill",
+        voiceBarTitle: "🎙️ Voice Assistant (Optional)",
+        voiceBarSub: "Click mic to start voice guided filling only if needed.",
+        lblPostType: "I am posting as:",
+        optGroupLeader: "Labor Contractor / Group Leader",
+        optGroupSub: "I have available workers",
+        optFarmer: "Farmer / Land Owner",
+        optFarmerSub: "I need workers for my field",
+        lblNameGroup: "Group Leader / Owner Name *",
+        lblNameFarmer: "Farmer / Landowner Name *",
+        lblPhone: "Phone Number *",
+        lblVillageGroup: "Leader's Home Village *",
+        lblVillageFarmer: "Farmer's Village Name *",
+        lblWorkLocGroup: "Work Current Location / Stand *",
+        lblWorkLocFarmer: "Work Field Current Location *",
+        btnGps: "Get My Live Location",
+        gpsPrompt: "Click 'Get My Live Location' to detect automatically.",
+        lblWorkersGroup: "Number of Workers Available in Group *",
+        lblWorkersFarmer: "Number of Workers Needed *",
+        lblWageGroup: "Expected Daily Wage Rate (₹) *",
+        lblWageFarmer: "Offered Wage Rate (₹) *",
+        lblCropType: "Primary Crop / Work Type *",
+        lblNotes: "Additional Work Details / Transport Needs",
+        phName: "e.g. Ramesh Kumar",
+        phPhone: "10-digit mobile number",
+        phVillage: "e.g. Medak, Village X",
+        phWorkLoc: "e.g. Near Water Tank, Field 4",
+        phWorkers: "e.g. 15",
+        phWage: "e.g. ₹550 / day or ₹4000/acre",
+        phNotes: "e.g. Food provided, transport available, start work early morning...",
         btnSubmit: "Publish Listing Now",
         btnUpdateSubmit: "Save Changes",
         footer1: "🌾 AgriLabor Connect - Empowering Farmers & Agricultural Labor Groups",
-        footer2: "Helping farm owners hire local labor gangs for Paddy, Tomatoes, Maize, Cotton & Seasonal Harvesting."
+        footer2: "Helping farm owners hire local labor gangs for Paddy, Tomatoes, Maize, Cotton & Seasonal Harvesting.",
+        noResults: "No postings found. Try expanding distance radius."
       },
       te: {
         appSubtitle: "రైతులు మరియు కూలీల అనుసంధాన వేదిక",
         postBtn: "లభ్యత / అవసరం నమోదు చేయండి",
         badgeTitle: "🌾 ఆధునిక వ్యవసాయ నెట్‌వర్క్ & సులువైన నమోదు",
         heroTitle: "మీ సమీపంలోని రైతులు మరియు కూలీల గ్రూపులను కనుగొనండి",
-        heroDesc: "వివరాలను నేరుగా టైప్ చేయవచ్చు. పొరపాట్లు ఉంటే సవరించుకోవచ్చు లేదా పని పూర్తయ్యాక పోస్ట్ తొలగించవచ్చు.",
+        heroDesc: "వివరాలను నేరుగా టైప్ చేయవచ్చు లేదా వాయిస్ ద్వారా నింపవచ్చు. పొరపాట్లు ఉంటే సవరించుకోవచ్చు లేదా పని పూర్తయ్యాక పోస్ట్ తొలగించవచ్చు.",
         tabAvailable: "అందుబాటులో ఉన్న కూలీల గ్రూపులు",
         tabNeeded: "కూలీలు కావలసిన రైతులు",
         quickPostGroup: "కూలీల గ్రూప్ పోస్ట్ చేయండి",
         quickPostNeed: "కూలీల అవసరం పోస్ట్ చేయండి",
         filterSearchLabel: "గ్రామం / పేరు / ఫోన్ వెతకండి",
+        filterSearchPH: "ఉదా: రాంపూర్, వరి, కుమార్...",
         filterCropLabel: "పంట / పని రకం",
         optAllCrops: "అన్ని పంటల పనులు",
+        optPaddy: "🌾 వరి సాగు (నాట్లు / కోతలు)",
+        optTomato: "🍅 టమాటో మరియు కూరగాయల కోత",
+        optMaize: "🌽 జొన్న / మొక్కజొన్న కోతలు",
+        optCotton: "☁️ పత్తి ఏరడం",
+        optSpraying: "🧪 పురుగుమందుల పిచికారీ",
+        optTractor: "🚜 ట్రాక్టర్ దుక్కి పనులు",
         filterRadiusLabel: "దూరం పరిధి",
         filterSortLabel: "క్రమబద్ధీకరణ",
         sortNewest: "తాజా పోస్టింగ్‌లు",
         sortWorkersHigh: "కూలీల సంఖ్య (ఎక్కువ నుండి తక్కువ)",
         sortWorkersLow: "కూలీల సంఖ్య (తక్కువ నుండి ఎక్కువ)",
+        sortRateLow: "కూలి రేటు (తక్కువ నుండి ఎక్కువ)",
+        sortRateHigh: "కూలి రేటు (ఎక్కువ నుండి తక్కువ)",
         mapHeader: "లైవ్ మ్యాప్ & లొకేషన్లు",
         mapSub: "సంప్రదించడానికి లేదా గూగుల్ మ్యాప్స్ కోసం క్లిక్ చేయండి",
         titleAvailableListings: "సమీపంలో అందుబాటులో ఉన్న కూలీలు",
         titleNeededListings: "కూలీల కోసం చూస్తున్న రైతులు",
         modalTitle: "కొత్త సమాచారం నమోదు చేయండి",
         modalTitleEdit: "సమాచారాన్ని సవరించండి",
+        modalSub: "నేరుగా టైప్ చేయండి లేదా వాయిస్ అసిస్టెంట్ వాడండి",
+        voiceBarTitle: "🎙️ వాయిస్ అసిస్టెంట్ (ఐచ్ఛికం)",
+        voiceBarSub: "మైక్ క్లిక్ చేసి మాట్లాడండి.",
+        lblPostType: "నేను ఈ క్రింది విధంగా పోస్ట్ చేస్తున్నాను:",
+        optGroupLeader: "కూలీల కాంట్రాక్టర్ / గ్రూప్ లీడర్",
+        optGroupSub: "నా దగ్గర కూలీలు అందుబాటులో ఉన్నారు",
+        optFarmer: "రైతు / భూ యజమాని",
+        optFarmerSub: "నా పొలానికి కూలీలు కావలెను",
+        lblNameGroup: "గ్రూప్ లీడర్ / యజమాని పేరు *",
+        lblNameFarmer: "రైతు / యజమాని పేరు *",
+        lblPhone: "ఫోన్ నంబర్ *",
+        lblVillageGroup: "గ్రామం పేరు *",
+        lblVillageFarmer: "రైతు గ్రామ పేరు *",
+        lblWorkLocGroup: "పని జరుగు ప్రదేశం *",
+        lblWorkLocFarmer: "పొలం ఉన్న ప్రదేశం *",
+        btnGps: "నా లైవ్ లొకేషన్ తీసుకోండి",
+        gpsPrompt: "ఆటోమేటిక్ లొకేషన్ కోసం క్లిక్ చేయండి.",
+        lblWorkersGroup: "అందుబాటులో ఉన్న కూలీల సంఖ్య *",
+        lblWorkersFarmer: "కావలసిన కూలీల సంఖ్య *",
+        lblWageGroup: "రోజువారీ కూలి (₹) *",
+        lblWageFarmer: "ఆఫర్ చేస్తున్న కూలి (₹) *",
+        lblCropType: "ప్రధాన పంట / పని రకం *",
+        lblNotes: "అదనపు వివరాలు / రవాణా సౌకర్యం",
+        phName: "ఉదా: రమేష్ కుమార్",
+        phPhone: "10 అంకెల మొబైల్ నంబర్",
+        phVillage: "ఉదా: మేడక్",
+        phWorkLoc: "ఉదా: వాటర్ ట్యాంక్ దగ్గర",
+        phWorkers: "ఉదా: 15",
+        phWage: "ఉదా: ₹550 / రోజు",
+        phNotes: "ఉదా: భోజనం సౌకర్యం కలదు...",
         btnSubmit: "ఇప్పుడే పోస్ట్ చేయండి",
         btnUpdateSubmit: "మార్పులను సేవ్ చేయండి",
         footer1: "🌾 అగ్రిలేబర్ కనెక్ట్ - రైతులు మరియు కూలీల శ్రేయోభివృద్ధి వేదిక",
-        footer2: "వరి, టమాటో, మొక్కజొన్న, పత్తి ఇతర పంటల పనుల కోసం సహాయపడుతుంది."
+        footer2: "వరి, టమాటో, మొక్కజొన్న, పత్తి ఇతర పంటల పనుల కోసం సహాయపడుతుంది.",
+        noResults: "పోస్టింగ్‌లు ఏవీ కనుగొనబడలేదు."
       }
     };
 
@@ -521,16 +706,20 @@
       markersGroup = L.layerGroup().addTo(map);
     }
 
-    // Switch Language
+    // Change Language
     function changeLanguage(lang) {
       const dict = translations[lang] || translations.en;
       document.querySelectorAll('[data-i18n]').forEach(elem => {
         const key = elem.getAttribute('data-i18n');
         if (dict[key]) elem.innerText = dict[key];
       });
+      document.querySelectorAll('[data-i18n-ph]').forEach(elem => {
+        const key = elem.getAttribute('data-i18n-ph');
+        if (dict[key]) elem.placeholder = dict[key];
+      });
     }
 
-    // Listen to Realtime Firebase Updates
+    // Realtime Database Sync Listener
     function initDatabaseSync() {
       db.ref('listings').on('value', (snapshot) => {
         const data = snapshot.val();
@@ -542,12 +731,11 @@
         }
         renderData();
         updateBadges();
-      }, (err) => {
-        console.error("Firebase fetch error:", err);
+      }, (error) => {
+        console.error("Firebase sync error:", error);
       });
     }
 
-    // Update Tab Badges
     function updateBadges() {
       const availCount = currentListings.filter(item => item.postType === 'available').length;
       const needCount = currentListings.filter(item => item.postType === 'needed').length;
@@ -555,7 +743,6 @@
       document.getElementById('badge-needed').innerText = needCount;
     }
 
-    // Tab Switcher
     function switchTab(tab) {
       activeTab = tab;
       const btnAvail = document.getElementById('tab-available');
@@ -574,7 +761,6 @@
       renderData();
     }
 
-    // Radius UI update
     function updateRadius(val) {
       document.getElementById('radius-value').innerText = val + ' km';
       renderData();
@@ -587,7 +773,7 @@
       const sort = document.getElementById('filter-sort').value;
       const container = document.getElementById('cards-container');
 
-      markersGroup.clearLayers();
+      if (markersGroup) markersGroup.clearLayers();
 
       let filtered = currentListings.filter(item => item.postType === activeTab);
 
@@ -616,13 +802,11 @@
       }
 
       filtered.forEach(item => {
-        // Add Marker to Map
-        if (item.lat && item.lng) {
+        if (item.lat && item.lng && markersGroup) {
           const marker = L.marker([item.lat, item.lng]).addTo(markersGroup);
           marker.bindPopup(`<b>${item.name}</b><br>${item.village}<br>Workers: ${item.workerCount}<br><a href="tel:${item.phone}">📞 ${item.phone}</a>`);
         }
 
-        // Render Listing Card
         const card = document.createElement('div');
         card.className = "bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-3";
         card.innerHTML = `
@@ -647,13 +831,13 @@
 
           ${item.notes ? `<p class="text-xs text-slate-600 italic bg-amber-50/50 p-2 rounded-lg">"${item.notes}"</p>` : ''}
 
-          <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100">
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-100 communication-actions">
             <div class="flex gap-2">
-              <a href="tel:${item.phone}" class="bg-agri-600 hover:bg-agri-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
-                <i class="fa-solid fa-phone"></i> Call
+              <a href="tel:${item.phone}" class="bg-agri-600 hover:bg-agri-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 phone-button">
+                <i class="fa-solid fa-phone"></i> <span>Call</span>
               </a>
-              <a href="https://wa.me/91${item.phone}" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1">
-                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+              <a href="https://wa.me/91${item.phone}" target="_blank" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 phone-button">
+                <i class="fa-brands fa-whatsapp"></i> <span>WhatsApp</span>
               </a>
             </div>
             <div class="flex gap-2">
@@ -670,20 +854,18 @@
       });
     }
 
-    // GPS Location Fetch
     function getCurrentLocation() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((pos) => {
           document.getElementById('input-lat').value = pos.coords.latitude;
           document.getElementById('input-lng').value = pos.coords.longitude;
-          document.getElementById('input-workLocation').value = `GPS Detected (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`;
+          document.getElementById('input-workLocation').value = `GPS (${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)})`;
         }, () => {
           alert("Unable to fetch GPS position.");
         });
       }
     }
 
-    // Modal Control
     function openPostModal(defaultType = 'available') {
       document.getElementById('postForm').reset();
       document.getElementById('input-edit-id').value = '';
@@ -697,7 +879,19 @@
       document.getElementById('postModal').classList.add('hidden');
     }
 
-    // Form Submission to Cloud
+    function toggleFormFields(type) {
+      // Optional toggle hook if needed
+    }
+
+    function toggleContinuousVoice() {
+      alert("Voice assistant active.");
+    }
+
+    function skipToNextVoiceField() {
+      // Skip voice field stub
+    }
+
+    // Form Submission to Cloud Database
     function handleFormSubmit(event) {
       event.preventDefault();
       const editId = document.getElementById('input-edit-id').value;
@@ -729,7 +923,6 @@
       }
     }
 
-    // Edit Listing
     function editListing(id) {
       const item = currentListings.find(x => x.id === id);
       if (!item) return;
@@ -753,14 +946,13 @@
       document.getElementById('postModal').classList.remove('hidden');
     }
 
-    // Delete Listing
     function deleteListing(id) {
-      if (confirm("Mark this post as completed/delete from cloud?")) {
+      if (confirm("Mark this post as completed and delete from cloud?")) {
         db.ref('listings/' + id).remove();
       }
     }
 
-    // Start App on DOM Ready
+    // Startup
     window.addEventListener('DOMContentLoaded', () => {
       initMap();
       initDatabaseSync();
